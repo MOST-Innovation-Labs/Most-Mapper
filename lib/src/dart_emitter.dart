@@ -256,7 +256,7 @@ class _DartEmitter {
     }
     if (_isNumeric(from) && _isNumeric(to)) {
       return switch (to.name) {
-        'int' => '$sourceExpression.toInt()',
+        'int' || 'long' => '$sourceExpression.toInt()',
         'double' || 'decimal' => '$sourceExpression.toDouble()',
         _ => sourceExpression,
       };
@@ -324,7 +324,7 @@ class _DartEmitter {
     return switch (type.name) {
       'String' => '$expression as String',
       'bool' => '$expression as bool',
-      'int' => '$expression as int',
+      'int' || 'long' => '$expression as int',
       'double' || 'decimal' => '($expression as num).toDouble()',
       'num' => '$expression as num',
       'DateTime' => _jsonFromStringExpression(type, '$expression as String'),
@@ -340,6 +340,7 @@ class _DartEmitter {
   String _dartBaseType(String name) {
     return switch (name) {
       'decimal' => 'double',
+      'long' => 'int',
       'String' || 'bool' || 'int' || 'double' || 'num' || 'DateTime' => name,
       _ => dartTypeName(name),
     };
@@ -354,7 +355,7 @@ class _DartEmitter {
     };
   }
 
-  bool _isNumeric(TypeRef type) => {'int', 'double', 'num', 'decimal'}.contains(type.name);
+  bool _isNumeric(TypeRef type) => {'int', 'long', 'double', 'num', 'decimal'}.contains(type.name);
 
   String _jsonToStringExpression(TypeRef type, String sourceExpression) {
     final converter = resolved.converterFor(type, const TypeRef(name: 'String', nullable: false));

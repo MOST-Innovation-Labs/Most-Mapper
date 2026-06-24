@@ -1,8 +1,8 @@
 import 'names.dart';
 import 'schema.dart';
 
-const _scalarTypes = {'String', 'bool', 'int', 'double', 'num', 'decimal', 'DateTime'};
-const _numericTypes = {'int', 'double', 'num', 'decimal'};
+const _scalarTypes = {'String', 'bool', 'int', 'long', 'double', 'num', 'decimal', 'DateTime'};
+const _numericTypes = {'int', 'long', 'double', 'num', 'decimal'};
 const _stringType = TypeRef(name: 'String', nullable: false);
 const _dateTimeType = TypeRef(name: 'DateTime', nullable: false);
 

@@ -124,6 +124,24 @@ models:
     );
   });
 
+  test('emits long as Dart int and C# long', () {
+    final resolved = ResolvedSchema(
+      parseMappingYaml('''
+models:
+  A:
+    json: true
+    fields:
+      epochMilliseconds: long
+'''),
+    );
+
+    expect(() => resolved.validate(), returnsNormally);
+    expect(emitDart(resolved), contains('final int epochMilliseconds;'));
+    expect(emitDart(resolved), contains("epochMilliseconds: json['epochMilliseconds'] as int"));
+    expect(emitCSharp(resolved), contains('public long EpochMilliseconds { get; set; }'));
+    expect(emitCSharp(resolved), contains('EpochMilliseconds = json.GetProperty("epochMilliseconds").GetInt64()'));
+  });
+
   test('allows unnamed converters and converter default selector', () {
     final schema = parseMappingYaml('''
 models:

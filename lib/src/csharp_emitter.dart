@@ -327,6 +327,7 @@ class _CSharpEmitter {
     if (_isNumeric(from) && _isNumeric(to)) {
       return switch (to.name) {
         'int' => '(int)$sourceExpression',
+        'long' => '(long)$sourceExpression',
         'double' || 'num' => '(double)$sourceExpression',
         'decimal' => '(decimal)$sourceExpression',
         _ => sourceExpression,
@@ -404,6 +405,7 @@ class _CSharpEmitter {
       'String' => '$expression.GetString()!',
       'bool' => '$expression.GetBoolean()',
       'int' => '$expression.GetInt32()',
+      'long' => '$expression.GetInt64()',
       'double' || 'num' => '$expression.GetDouble()',
       'decimal' => '$expression.GetDecimal()',
       'DateTime' => _jsonFromStringExpression(type, '$expression.GetString()!'),
@@ -421,6 +423,7 @@ class _CSharpEmitter {
       'String' => 'string',
       'bool' => 'bool',
       'int' => 'int',
+      'long' => 'long',
       'double' || 'num' => 'double',
       'decimal' => 'decimal',
       'DateTime' => 'System.DateTime',
@@ -448,6 +451,7 @@ class _CSharpEmitter {
   bool _isValueType(TypeRef type) {
     return type.name == 'bool' ||
         type.name == 'int' ||
+        type.name == 'long' ||
         type.name == 'double' ||
         type.name == 'num' ||
         type.name == 'decimal' ||
@@ -465,7 +469,7 @@ class _CSharpEmitter {
     };
   }
 
-  bool _isNumeric(TypeRef type) => {'int', 'double', 'num', 'decimal'}.contains(type.name);
+  bool _isNumeric(TypeRef type) => {'int', 'long', 'double', 'num', 'decimal'}.contains(type.name);
 
   String _jsonToStringExpression(TypeRef type, String sourceExpression) {
     final converter = resolved.converterFor(type, const TypeRef(name: 'String', nullable: false));
