@@ -214,10 +214,8 @@ class _CSharpEmitter {
       for (final mapping in resolved.schema.mappings) {
         final fromModel = resolved.dataModel(mapping.from);
         final toModel = resolved.dataModel(mapping.to);
-        buffer.writeln(
-          '    public static ${csharpTypeName(mapping.to)} ${_mappingFunctionName(mapping.from, mapping.to)}(',
-        );
-        buffer.writeln('        ${csharpTypeName(mapping.from)} source)');
+        buffer.writeln('    public static ${csharpTypeName(mapping.to)} ${_mappingMethodName(mapping.to)}(');
+        buffer.writeln('        this ${csharpTypeName(mapping.from)} source)');
         buffer.writeln('    {');
         buffer.writeln('        return new ${csharpTypeName(mapping.to)}');
         buffer.writeln('        {');
@@ -346,7 +344,7 @@ class _CSharpEmitter {
       return '${_enumHelperName(to.name)}.FromIntValue($sourceExpression)';
     }
     if (resolved.isDataModel(from.name) && resolved.isDataModel(to.name) && resolved.mappingFor(from, to) != null) {
-      return 'MostMapperMappings.${_mappingFunctionName(from.name, to.name)}($sourceExpression)';
+      return '$sourceExpression.${_mappingMethodName(to.name)}()';
     }
 
     final converter = resolved.converterFor(from, to);
@@ -502,7 +500,7 @@ class _CSharpEmitter {
 
   String _enumHelperName(String enumName) => '${csharpTypeName(enumName)}Conversions';
 
-  String _mappingFunctionName(String from, String to) => 'Map${csharpTypeName(from)}To${csharpTypeName(to)}';
+  String _mappingMethodName(String to) => 'To${csharpTypeName(to)}';
 
   void _writeDoc(StringBuffer buffer, String? doc, {String indent = ''}) {
     if (doc == null || doc.isEmpty) {

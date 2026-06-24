@@ -53,7 +53,7 @@ C# generation requires the .NET SDK because the generated `.cs` file is passed t
 - `DateTime` has default `DateTime -> String` and `String -> DateTime` converters using UTC ISO text like
   `2026-06-24T07:19:06Z`.
 - Multiline converter expressions are supported with YAML block strings.
-- `mappings` generate typed mapping functions.
+- `mappings` generate typed extension methods on source models.
 - Mapping fields support `{ from: SourceField }`, `{ const: null }`, and scalar constants.
 - Mapping field names are case-sensitive YAML keys.
 

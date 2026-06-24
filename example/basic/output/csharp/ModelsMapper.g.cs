@@ -371,8 +371,8 @@ public class ModelBWire
 
 public static class MostMapperMappings
 {
-    public static ModelBWire MapModelBToModelBWire(
-        ModelB source)
+    public static ModelBWire ToModelBWire(
+        this ModelB source)
     {
         return new ModelBWire
         {
@@ -381,8 +381,8 @@ public static class MostMapperMappings
         };
     }
 
-    public static ModelB MapModelBWireToModelB(
-        ModelBWire source)
+    public static ModelB ToModelB(
+        this ModelBWire source)
     {
         return new ModelB
         {
@@ -391,8 +391,8 @@ public static class MostMapperMappings
         };
     }
 
-    public static ModelAWire MapModelAToModelAWire(
-        ModelA source)
+    public static ModelAWire ToModelAWire(
+        this ModelA source)
     {
         return new ModelAWire
         {
@@ -400,7 +400,7 @@ public static class MostMapperMappings
             Amount = MoneyToDecimal(source.Amount),
             Status = PaymentStatusConversions.ToStringValue(source.Status),
             StatusCode = PaymentStatusConversions.ToIntValue(source.Status),
-            Bs = source.Bs.Select(item => MostMapperMappings.MapModelBToModelBWire(item)).ToList(),
+            Bs = source.Bs.Select(item => item.ToModelBWire()).ToList(),
             CreatedAt = source.CreatedAt == null ? null : DateTimeToString(source.CreatedAt.Value),
             SomeField = null,
         };

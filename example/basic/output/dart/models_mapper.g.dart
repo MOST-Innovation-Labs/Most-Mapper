@@ -208,22 +208,31 @@ class ModelBWire {
       ModelBWire(id: json['Id'] as String, datetime: json['Datetime'] as String);
 }
 
-ModelBWire mapModelBToModelBWire(ModelB source) {
-  return ModelBWire(id: source.id, datetime: _MostMapperConverters._offsetDateTimeToString(source.datetime));
+extension ModelBToModelBWire on ModelB {
+  ModelBWire toModelBWire() {
+    final source = this;
+    return ModelBWire(id: source.id, datetime: _MostMapperConverters._offsetDateTimeToString(source.datetime));
+  }
 }
 
-ModelB mapModelBWireToModelB(ModelBWire source) {
-  return ModelB(id: source.id, datetime: _MostMapperConverters._offsetStringToDateTime(source.datetime));
+extension ModelBWireToModelB on ModelBWire {
+  ModelB toModelB() {
+    final source = this;
+    return ModelB(id: source.id, datetime: _MostMapperConverters._offsetStringToDateTime(source.datetime));
+  }
 }
 
-ModelAWire mapModelAToModelAWire(ModelA source) {
-  return ModelAWire(
-    id: source.jsonFieldName,
-    amount: _MostMapperConverters._moneyToDecimal(source.amount),
-    status: paymentStatusToString(source.status),
-    statusCode: paymentStatusToInt(source.status),
-    bs: source.bs.map((item) => mapModelBToModelBWire(item)).toList(),
-    createdAt: source.createdAt == null ? null : _MostMapperConverters._dateTimeToString(source.createdAt!),
-    someField: null,
-  );
+extension ModelAToModelAWire on ModelA {
+  ModelAWire toModelAWire() {
+    final source = this;
+    return ModelAWire(
+      id: source.jsonFieldName,
+      amount: _MostMapperConverters._moneyToDecimal(source.amount),
+      status: paymentStatusToString(source.status),
+      statusCode: paymentStatusToInt(source.status),
+      bs: source.bs.map((item) => item.toModelBWire()).toList(),
+      createdAt: source.createdAt == null ? null : _MostMapperConverters._dateTimeToString(source.createdAt!),
+      someField: null,
+    );
+  }
 }

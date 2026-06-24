@@ -36,7 +36,7 @@ void main() {
     expect(resolved.canConvert(parseType('List<ModelB>'), parseType('List<ModelBWire>')), isTrue);
   });
 
-  test('emits Dart models, JSON helpers, enum helpers, mappings, casts, and converters', () {
+  test('emits Dart models, JSON helpers, enum helpers, mapping extensions, casts, and converters', () {
     final output = emitDart(_resolvedSample());
 
     expect(output, contains('enum PaymentStatus'));
@@ -52,7 +52,9 @@ void main() {
     expect(output, contains('return (source.value / pow(10, source.fractionalUnits));'));
     expect(output, contains('_MostMapperConverters._offsetDateTimeToString(createdAt!)'));
     expect(output, contains("_MostMapperConverters._offsetStringToDateTime(json['createdAt'] as String)"));
-    expect(output, contains('mapModelBToModelBWire(item)'));
+    expect(output, contains('extension ModelBToModelBWire on ModelB'));
+    expect(output, contains('ModelBWire toModelBWire()'));
+    expect(output, contains('item.toModelBWire()'));
     expect(output, contains('id: source.jsonFieldName'));
     expect(output, isNot(contains('id: source.jsonFieldName == null ? null : source.jsonFieldName!')));
     expect(output, contains('_MostMapperConverters._moneyToDecimal(source.amount)'));
@@ -61,7 +63,7 @@ void main() {
     expect(output, contains('someField: null'));
   });
 
-  test('emits C# models, JSON helpers, enum helpers, mappings, casts, and converters', () {
+  test('emits C# models, JSON helpers, enum helpers, mapping extensions, casts, and converters', () {
     final output = emitCSharp(_resolvedSample());
 
     expect(output, contains('public enum PaymentStatus'));
@@ -75,7 +77,9 @@ void main() {
     expect(output, contains('private static decimal MoneyToDecimal(Money source)'));
     expect(output, contains('OffsetDateTimeToString(CreatedAt.Value)'));
     expect(output, contains('OffsetStringToDateTime(createdAtJson.GetString()!)'));
-    expect(output, contains('MostMapperMappings.MapModelBToModelBWire(item)'));
+    expect(output, contains('public static ModelBWire ToModelBWire('));
+    expect(output, contains('this ModelB source)'));
+    expect(output, contains('item.ToModelBWire()'));
     expect(output, contains('Id = source.JsonFieldName'));
     expect(output, isNot(contains('Id = source.JsonFieldName == null ? null : source.JsonFieldName')));
     expect(output, contains('MoneyToDecimal(source.Amount)'));

@@ -191,18 +191,19 @@ class _DartEmitter {
   void _writeMapping(StringBuffer buffer, MappingDef mapping) {
     final fromModel = resolved.dataModel(mapping.from);
     final toModel = resolved.dataModel(mapping.to);
-    buffer.writeln('${dartTypeName(mapping.to)} ${_mappingFunctionName(mapping.from, mapping.to)}(');
-    buffer.writeln('  ${dartTypeName(mapping.from)} source,');
-    buffer.writeln(') {');
-    buffer.writeln('  return ${dartTypeName(mapping.to)}(');
+    buffer.writeln('extension ${_mappingExtensionName(mapping.from, mapping.to)} on ${dartTypeName(mapping.from)} {');
+    buffer.writeln('  ${dartTypeName(mapping.to)} ${_mappingMethodName(mapping.to)}() {');
+    buffer.writeln('    final source = this;');
+    buffer.writeln('    return ${dartTypeName(mapping.to)}(');
     for (final targetField in toModel.fields.values) {
       final fieldMapping = mapping.fields[targetField.name];
       final expression = fieldMapping == null
           ? _mappedFieldExpression(fromModel.fields[targetField.name]!, targetField)
           : _explicitFieldExpression(fromModel, targetField, fieldMapping);
-      buffer.writeln('    ${dartFieldName(targetField.name)}: $expression,');
+      buffer.writeln('      ${dartFieldName(targetField.name)}: $expression,');
     }
-    buffer.writeln('  );');
+    buffer.writeln('    );');
+    buffer.writeln('  }');
     buffer.writeln('}');
     buffer.writeln();
   }
@@ -274,7 +275,7 @@ class _DartEmitter {
       return '${_enumFromIntName(to.name)}($sourceExpression)';
     }
     if (resolved.isDataModel(from.name) && resolved.isDataModel(to.name) && resolved.mappingFor(from, to) != null) {
-      return '${_mappingFunctionName(from.name, to.name)}($sourceExpression)';
+      return '$sourceExpression.${_mappingMethodName(to.name)}()';
     }
 
     final converter = resolved.converterFor(from, to);
@@ -393,7 +394,9 @@ class _DartEmitter {
 
   String _enumFromIntName(String enumName) => '${dartFieldName(enumName)}FromInt';
 
-  String _mappingFunctionName(String from, String to) => 'map${dartTypeName(from)}To${dartTypeName(to)}';
+  String _mappingExtensionName(String from, String to) => '${dartTypeName(from)}To${dartTypeName(to)}';
+
+  String _mappingMethodName(String to) => 'to${dartTypeName(to)}';
 
   void _writeDoc(StringBuffer buffer, String? doc, {String indent = ''}) {
     if (doc == null || doc.isEmpty) {
