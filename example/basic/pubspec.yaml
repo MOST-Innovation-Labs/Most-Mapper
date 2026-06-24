@@ -1,0 +1,9 @@
+name: most_mapper_basic_example
+publish_to: none
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  most_mapper:
+    path: ../..
