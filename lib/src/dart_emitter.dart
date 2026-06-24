@@ -27,7 +27,7 @@ class _DartEmitter {
 
     final buffer = StringBuffer();
     buffer.writeln('// GENERATED CODE - DO NOT MODIFY BY HAND.');
-    buffer.writeln('// ignore_for_file: unused_element');
+    buffer.writeln('// ignore_for_file: unnecessary_parenthesis, unused_element, avoid-high-cyclomatic-complexity');
     buffer.writeln();
 
     final imports = <String>{};
@@ -65,8 +65,8 @@ class _DartEmitter {
     if (converters.isEmpty) {
       return;
     }
-    buffer.writeln('class _MostMapperConverters {');
-    buffer.writeln('  const _MostMapperConverters._();');
+    buffer.writeln('class MostMapperConverters {');
+    buffer.writeln('  const MostMapperConverters._();');
     buffer.writeln();
     for (final converter in converters) {
       final methodName = _converterMethodNames[converter] ?? dartConverterBaseMethodName(converter);
@@ -377,7 +377,7 @@ class _DartEmitter {
   String _converterCall(ConverterDef converter, String sourceExpression) {
     _usedConverters.add(converter);
     final methodName = _converterMethodNames[converter] ?? dartConverterBaseMethodName(converter);
-    return '_MostMapperConverters.$methodName($sourceExpression)';
+    return 'MostMapperConverters.$methodName($sourceExpression)';
   }
 
   bool _enumHasStrings(EnumModelDef enumDef) => enumDef.values.values.every((value) => value.stringValue != null);

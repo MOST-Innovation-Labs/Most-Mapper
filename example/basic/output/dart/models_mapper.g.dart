@@ -1,20 +1,20 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND.
-// ignore_for_file: unused_element
+// ignore_for_file: unnecessary_parenthesis, unused_element, avoid-high-cyclomatic-complexity
 
 import 'dart:math';
 
-class _MostMapperConverters {
-  const _MostMapperConverters._();
+class MostMapperConverters {
+  const MostMapperConverters._();
 
-  static String _dateTimeToString(DateTime source) {
+  static String dateTimeToString(DateTime source) {
     return (source.toUtc().toIso8601String());
   }
 
-  static double _moneyToDecimal(Money source) {
+  static double moneyToDecimal(Money source) {
     return (source.value / pow(10, source.fractionalUnits));
   }
 
-  static String _offsetDateTimeToString(DateTime source) {
+  static String offsetDateTimeToString(DateTime source) {
     return ((() {
       String two(int value) => value.toString().padLeft(2, '0');
       final offset = source.timeZoneOffset;
@@ -24,7 +24,7 @@ class _MostMapperConverters {
     })());
   }
 
-  static DateTime _offsetStringToDateTime(String source) {
+  static DateTime offsetStringToDateTime(String source) {
     return ((() {
       final match = RegExp(r'^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})([+-])(\d{2}):(\d{2})$').firstMatch(source);
       if (match == null) {
@@ -122,7 +122,7 @@ class ModelA {
     'amount': amount.toJson(),
     'status': paymentStatusToString(status),
     'bs': bs.map((item) => item.toJson()).toList(),
-    'createdAt': createdAt == null ? null : _MostMapperConverters._offsetDateTimeToString(createdAt!),
+    'createdAt': createdAt == null ? null : MostMapperConverters.offsetDateTimeToString(createdAt!),
   };
 
   factory ModelA.fromJson(Map<String, dynamic> json) => ModelA(
@@ -132,7 +132,7 @@ class ModelA {
     bs: (json['bs'] as List<dynamic>).map((item) => ModelB.fromJson(item as Map<String, dynamic>)).toList(),
     createdAt: json['createdAt'] == null
         ? null
-        : _MostMapperConverters._offsetStringToDateTime(json['createdAt'] as String),
+        : MostMapperConverters.offsetStringToDateTime(json['createdAt'] as String),
   );
 }
 
@@ -186,12 +186,12 @@ class ModelB {
 
   Map<String, dynamic> toJson() => <String, dynamic>{
     'Id': id,
-    'Datetime': _MostMapperConverters._offsetDateTimeToString(datetime),
+    'Datetime': MostMapperConverters.offsetDateTimeToString(datetime),
   };
 
   factory ModelB.fromJson(Map<String, dynamic> json) => ModelB(
     id: json['Id'] as String,
-    datetime: _MostMapperConverters._offsetStringToDateTime(json['Datetime'] as String),
+    datetime: MostMapperConverters.offsetStringToDateTime(json['Datetime'] as String),
   );
 }
 
@@ -211,14 +211,14 @@ class ModelBWire {
 extension ModelBToModelBWire on ModelB {
   ModelBWire toModelBWire() {
     final source = this;
-    return ModelBWire(id: source.id, datetime: _MostMapperConverters._offsetDateTimeToString(source.datetime));
+    return ModelBWire(id: source.id, datetime: MostMapperConverters.offsetDateTimeToString(source.datetime));
   }
 }
 
 extension ModelBWireToModelB on ModelBWire {
   ModelB toModelB() {
     final source = this;
-    return ModelB(id: source.id, datetime: _MostMapperConverters._offsetStringToDateTime(source.datetime));
+    return ModelB(id: source.id, datetime: MostMapperConverters.offsetStringToDateTime(source.datetime));
   }
 }
 
@@ -227,11 +227,11 @@ extension ModelAToModelAWire on ModelA {
     final source = this;
     return ModelAWire(
       id: source.jsonFieldName,
-      amount: _MostMapperConverters._moneyToDecimal(source.amount),
+      amount: MostMapperConverters.moneyToDecimal(source.amount),
       status: paymentStatusToString(source.status),
       statusCode: paymentStatusToInt(source.status),
       bs: source.bs.map((item) => item.toModelBWire()).toList(),
-      createdAt: source.createdAt == null ? null : _MostMapperConverters._dateTimeToString(source.createdAt!),
+      createdAt: source.createdAt == null ? null : MostMapperConverters.dateTimeToString(source.createdAt!),
       someField: null,
     );
   }

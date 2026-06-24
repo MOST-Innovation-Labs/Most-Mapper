@@ -7,6 +7,36 @@ using System.Globalization;
 using System.Linq;
 using System.Text.Json;
 
+public static class MostMapperConverters
+{
+    public static string DateTimeToString(System.DateTime source)
+    {
+        return (source.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    public static decimal MoneyToDecimal(Money source)
+    {
+        return ((decimal)source.Value / (decimal)Math.Pow(10, source.FractionalUnits));
+    }
+
+    public static string OffsetDateTimeToString(System.DateTime source)
+    {
+        return (new DateTimeOffset(source).ToString("yyyy-MM-dd'T'HH:mm:sszzz", CultureInfo.InvariantCulture));
+    }
+
+    public static System.DateTime OffsetStringToDateTime(string source)
+    {
+        return (
+            DateTimeOffset.ParseExact(
+                source,
+                "yyyy-MM-dd'T'HH:mm:sszzz",
+                CultureInfo.InvariantCulture
+            ).UtcDateTime
+        );
+    }
+
+}
+
 internal static class MostMapperJson
 {
     public static JsonElement? Optional(JsonElement json, string name)
@@ -93,28 +123,6 @@ public class Money
             Value = json.GetProperty("value").GetInt32(),
         };
     }
-
-    private static decimal MoneyToDecimal(Money source)
-    {
-        return ((decimal)source.Value / (decimal)Math.Pow(10, source.FractionalUnits));
-    }
-
-    private static string OffsetDateTimeToString(System.DateTime source)
-    {
-        return (new DateTimeOffset(source).ToString("yyyy-MM-dd'T'HH:mm:sszzz", CultureInfo.InvariantCulture));
-    }
-
-    private static System.DateTime OffsetStringToDateTime(string source)
-    {
-        return (
-            DateTimeOffset.ParseExact(
-                source,
-                "yyyy-MM-dd'T'HH:mm:sszzz",
-                CultureInfo.InvariantCulture
-            ).UtcDateTime
-        );
-    }
-
 }
 
 /// <summary>
@@ -136,7 +144,7 @@ public class ModelA
             ["amount"] = Amount.ToJsonMap(),
             ["status"] = PaymentStatusConversions.ToStringValue(Status),
             ["bs"] = Bs.Select(item => item.ToJsonMap()).ToList(),
-            ["createdAt"] = CreatedAt == null ? null : OffsetDateTimeToString(CreatedAt.Value),
+            ["createdAt"] = CreatedAt == null ? null : MostMapperConverters.OffsetDateTimeToString(CreatedAt.Value),
         };
     }
 
@@ -156,31 +164,9 @@ public class ModelA
             Amount = Money.FromJsonElement(json.GetProperty("amount")),
             Status = PaymentStatusConversions.FromStringValue(json.GetProperty("status").GetString()!),
             Bs = json.GetProperty("bs").EnumerateArray().Select(item => ModelB.FromJsonElement(item)).ToList(),
-            CreatedAt = MostMapperJson.Optional(json, "createdAt") is JsonElement createdAtJson ? OffsetStringToDateTime(createdAtJson.GetString()!) : null,
+            CreatedAt = MostMapperJson.Optional(json, "createdAt") is JsonElement createdAtJson ? MostMapperConverters.OffsetStringToDateTime(createdAtJson.GetString()!) : null,
         };
     }
-
-    private static decimal MoneyToDecimal(Money source)
-    {
-        return ((decimal)source.Value / (decimal)Math.Pow(10, source.FractionalUnits));
-    }
-
-    private static string OffsetDateTimeToString(System.DateTime source)
-    {
-        return (new DateTimeOffset(source).ToString("yyyy-MM-dd'T'HH:mm:sszzz", CultureInfo.InvariantCulture));
-    }
-
-    private static System.DateTime OffsetStringToDateTime(string source)
-    {
-        return (
-            DateTimeOffset.ParseExact(
-                source,
-                "yyyy-MM-dd'T'HH:mm:sszzz",
-                CultureInfo.InvariantCulture
-            ).UtcDateTime
-        );
-    }
-
 }
 
 /// <summary>
@@ -231,28 +217,6 @@ public class ModelAWire
             SomeField = MostMapperJson.Optional(json, "SomeField") is JsonElement someFieldJson ? someFieldJson.GetString()! : null,
         };
     }
-
-    private static decimal MoneyToDecimal(Money source)
-    {
-        return ((decimal)source.Value / (decimal)Math.Pow(10, source.FractionalUnits));
-    }
-
-    private static string OffsetDateTimeToString(System.DateTime source)
-    {
-        return (new DateTimeOffset(source).ToString("yyyy-MM-dd'T'HH:mm:sszzz", CultureInfo.InvariantCulture));
-    }
-
-    private static System.DateTime OffsetStringToDateTime(string source)
-    {
-        return (
-            DateTimeOffset.ParseExact(
-                source,
-                "yyyy-MM-dd'T'HH:mm:sszzz",
-                CultureInfo.InvariantCulture
-            ).UtcDateTime
-        );
-    }
-
 }
 
 /// <summary>
@@ -268,7 +232,7 @@ public class ModelB
         return new Dictionary<string, object?>
         {
             ["Id"] = Id,
-            ["Datetime"] = OffsetDateTimeToString(Datetime),
+            ["Datetime"] = MostMapperConverters.OffsetDateTimeToString(Datetime),
         };
     }
 
@@ -285,31 +249,9 @@ public class ModelB
         return new ModelB
         {
             Id = json.GetProperty("Id").GetString()!,
-            Datetime = OffsetStringToDateTime(json.GetProperty("Datetime").GetString()!),
+            Datetime = MostMapperConverters.OffsetStringToDateTime(json.GetProperty("Datetime").GetString()!),
         };
     }
-
-    private static decimal MoneyToDecimal(Money source)
-    {
-        return ((decimal)source.Value / (decimal)Math.Pow(10, source.FractionalUnits));
-    }
-
-    private static string OffsetDateTimeToString(System.DateTime source)
-    {
-        return (new DateTimeOffset(source).ToString("yyyy-MM-dd'T'HH:mm:sszzz", CultureInfo.InvariantCulture));
-    }
-
-    private static System.DateTime OffsetStringToDateTime(string source)
-    {
-        return (
-            DateTimeOffset.ParseExact(
-                source,
-                "yyyy-MM-dd'T'HH:mm:sszzz",
-                CultureInfo.InvariantCulture
-            ).UtcDateTime
-        );
-    }
-
 }
 
 /// <summary>
@@ -345,28 +287,6 @@ public class ModelBWire
             Datetime = json.GetProperty("Datetime").GetString()!,
         };
     }
-
-    private static decimal MoneyToDecimal(Money source)
-    {
-        return ((decimal)source.Value / (decimal)Math.Pow(10, source.FractionalUnits));
-    }
-
-    private static string OffsetDateTimeToString(System.DateTime source)
-    {
-        return (new DateTimeOffset(source).ToString("yyyy-MM-dd'T'HH:mm:sszzz", CultureInfo.InvariantCulture));
-    }
-
-    private static System.DateTime OffsetStringToDateTime(string source)
-    {
-        return (
-            DateTimeOffset.ParseExact(
-                source,
-                "yyyy-MM-dd'T'HH:mm:sszzz",
-                CultureInfo.InvariantCulture
-            ).UtcDateTime
-        );
-    }
-
 }
 
 public static class MostMapperMappings
@@ -377,7 +297,7 @@ public static class MostMapperMappings
         return new ModelBWire
         {
             Id = source.Id,
-            Datetime = OffsetDateTimeToString(source.Datetime),
+            Datetime = MostMapperConverters.OffsetDateTimeToString(source.Datetime),
         };
     }
 
@@ -387,7 +307,7 @@ public static class MostMapperMappings
         return new ModelB
         {
             Id = source.Id,
-            Datetime = OffsetStringToDateTime(source.Datetime),
+            Datetime = MostMapperConverters.OffsetStringToDateTime(source.Datetime),
         };
     }
 
@@ -397,40 +317,13 @@ public static class MostMapperMappings
         return new ModelAWire
         {
             Id = source.JsonFieldName,
-            Amount = MoneyToDecimal(source.Amount),
+            Amount = MostMapperConverters.MoneyToDecimal(source.Amount),
             Status = PaymentStatusConversions.ToStringValue(source.Status),
             StatusCode = PaymentStatusConversions.ToIntValue(source.Status),
             Bs = source.Bs.Select(item => item.ToModelBWire()).ToList(),
-            CreatedAt = source.CreatedAt == null ? null : DateTimeToString(source.CreatedAt.Value),
+            CreatedAt = source.CreatedAt == null ? null : MostMapperConverters.DateTimeToString(source.CreatedAt.Value),
             SomeField = null,
         };
-    }
-
-
-    private static string DateTimeToString(System.DateTime source)
-    {
-        return (source.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture));
-    }
-
-    private static decimal MoneyToDecimal(Money source)
-    {
-        return ((decimal)source.Value / (decimal)Math.Pow(10, source.FractionalUnits));
-    }
-
-    private static string OffsetDateTimeToString(System.DateTime source)
-    {
-        return (new DateTimeOffset(source).ToString("yyyy-MM-dd'T'HH:mm:sszzz", CultureInfo.InvariantCulture));
-    }
-
-    private static System.DateTime OffsetStringToDateTime(string source)
-    {
-        return (
-            DateTimeOffset.ParseExact(
-                source,
-                "yyyy-MM-dd'T'HH:mm:sszzz",
-                CultureInfo.InvariantCulture
-            ).UtcDateTime
-        );
     }
 
 }

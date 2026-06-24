@@ -78,7 +78,10 @@ String dartFieldName(String raw) {
 
 String dartEnumValueName(String raw) => dartFieldName(raw);
 
-String dartConverterBaseMethodName(ConverterDef converter) => '_${dartFieldName(_converterRawName(converter))}';
+String dartConverterBaseMethodName(ConverterDef converter) {
+  final identifier = dartFieldName(_converterRawName(converter));
+  return identifier.startsWith('_') ? 'converter${identifier.substring(1)}' : identifier;
+}
 
 Map<ConverterDef, String> dartConverterMethodNames(Iterable<ConverterDef> converters) {
   return _converterMethodNames(converters, dartConverterBaseMethodName);

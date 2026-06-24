@@ -45,20 +45,24 @@ void main() {
     expect(output, contains('paymentStatusToInt(source.status)'));
     expect(output, isNot(contains('_mostMapperDateTimeToJson')));
     expect(output, isNot(contains('_mostMapperDateTimeFromJson')));
-    expect(output, contains('class _MostMapperConverters'));
+    expect(
+      output,
+      contains('// ignore_for_file: unnecessary_parenthesis, unused_element, avoid-high-cyclomatic-complexity'),
+    );
+    expect(output, contains('class MostMapperConverters'));
     expect(output, isNot(contains('static String _dateTimeToString(DateTime source)')));
-    expect(output, isNot(contains('static DateTime _stringToDateTime(String source)')));
-    expect(output, contains('static double _moneyToDecimal(Money source)'));
+    expect(output, isNot(contains('static DateTime stringToDateTime(String source)')));
+    expect(output, contains('static double moneyToDecimal(Money source)'));
     expect(output, contains('return (source.value / pow(10, source.fractionalUnits));'));
-    expect(output, contains('_MostMapperConverters._offsetDateTimeToString(createdAt!)'));
-    expect(output, contains("_MostMapperConverters._offsetStringToDateTime(json['createdAt'] as String)"));
+    expect(output, contains('MostMapperConverters.offsetDateTimeToString(createdAt!)'));
+    expect(output, contains("MostMapperConverters.offsetStringToDateTime(json['createdAt'] as String)"));
     expect(output, contains('extension ModelBToModelBWire on ModelB'));
     expect(output, contains('ModelBWire toModelBWire()'));
     expect(output, contains('item.toModelBWire()'));
     expect(output, contains('id: source.jsonFieldName'));
     expect(output, isNot(contains('id: source.jsonFieldName == null ? null : source.jsonFieldName!')));
-    expect(output, contains('_MostMapperConverters._moneyToDecimal(source.amount)'));
-    expect(output, contains('_MostMapperConverters._offsetDateTimeToString(source.datetime)'));
+    expect(output, contains('MostMapperConverters.moneyToDecimal(source.amount)'));
+    expect(output, contains('MostMapperConverters.offsetDateTimeToString(source.datetime)'));
     expect(output, contains('withoutOffsetUtc.subtract(offset)'));
     expect(output, contains('someField: null'));
   });
@@ -74,16 +78,18 @@ void main() {
     expect(output, isNot(contains('MostMapperJson.DateTimeFromJson')));
     expect(output, isNot(contains('private static string DateTimeToString(System.DateTime source)')));
     expect(output, isNot(contains('private static System.DateTime StringToDateTime(string source)')));
-    expect(output, contains('private static decimal MoneyToDecimal(Money source)'));
-    expect(output, contains('OffsetDateTimeToString(CreatedAt.Value)'));
-    expect(output, contains('OffsetStringToDateTime(createdAtJson.GetString()!)'));
+    expect(output, contains('public static class MostMapperConverters'));
+    expect(output, contains('public static decimal MoneyToDecimal(Money source)'));
+    expect(output, isNot(contains('private static decimal MoneyToDecimal(Money source)')));
+    expect(output, contains('MostMapperConverters.OffsetDateTimeToString(CreatedAt.Value)'));
+    expect(output, contains('MostMapperConverters.OffsetStringToDateTime(createdAtJson.GetString()!)'));
     expect(output, contains('public static ModelBWire ToModelBWire('));
     expect(output, contains('this ModelB source)'));
     expect(output, contains('item.ToModelBWire()'));
     expect(output, contains('Id = source.JsonFieldName'));
     expect(output, isNot(contains('Id = source.JsonFieldName == null ? null : source.JsonFieldName')));
-    expect(output, contains('MoneyToDecimal(source.Amount)'));
-    expect(output, contains('OffsetDateTimeToString(source.Datetime)'));
+    expect(output, contains('MostMapperConverters.MoneyToDecimal(source.Amount)'));
+    expect(output, contains('MostMapperConverters.OffsetDateTimeToString(source.Datetime)'));
     expect(output, contains('DateTimeOffset.ParseExact('));
     expect(output, contains('return (\n            DateTimeOffset.ParseExact(\n                source,'));
     expect(output, contains('SomeField = null'));
@@ -177,17 +183,17 @@ mappings:
     resolved.validate();
 
     final dart = emitDart(resolved);
-    expect(dart, contains('static String _dateTimeToString(DateTime source)'));
-    expect(dart, contains('static String _dateTimeToString2(DateTime source)'));
-    expect(dart, contains('defaultValue: _MostMapperConverters._dateTimeToString(source.value)'));
-    expect(dart, contains('implicitValue: _MostMapperConverters._dateTimeToString2(source.value)'));
-    expect(dart, isNot(contains('static DateTime _stringToDateTime(String source)')));
+    expect(dart, contains('static String dateTimeToString(DateTime source)'));
+    expect(dart, contains('static String dateTimeToString2(DateTime source)'));
+    expect(dart, contains('defaultValue: MostMapperConverters.dateTimeToString(source.value)'));
+    expect(dart, contains('implicitValue: MostMapperConverters.dateTimeToString2(source.value)'));
+    expect(dart, isNot(contains('static DateTime stringToDateTime(String source)')));
 
     final csharp = emitCSharp(resolved);
-    expect(csharp, contains('private static string DateTimeToString(System.DateTime source)'));
-    expect(csharp, contains('private static string DateTimeToString2(System.DateTime source)'));
-    expect(csharp, contains('DefaultValue = DateTimeToString(source.Value)'));
-    expect(csharp, contains('ImplicitValue = DateTimeToString2(source.Value)'));
+    expect(csharp, contains('public static string DateTimeToString(System.DateTime source)'));
+    expect(csharp, contains('public static string DateTimeToString2(System.DateTime source)'));
+    expect(csharp, contains('DefaultValue = MostMapperConverters.DateTimeToString(source.Value)'));
+    expect(csharp, contains('ImplicitValue = MostMapperConverters.DateTimeToString2(source.Value)'));
   });
 
   test('uses the last converter for a type pair by default and named converters explicitly', () {
@@ -228,9 +234,9 @@ mappings:
 
     final dart = emitDart(resolved);
     expect(resolved.converterFor(parseType('int'), parseType('String'))!.name, 'secondIntToString');
-    expect(dart, contains('static String _secondIntToString(int source)'));
-    expect(dart, contains('value: _MostMapperConverters._secondIntToString(source.value)'));
-    expect(dart, contains('explicitValue: _MostMapperConverters._firstIntToString(source.value)'));
+    expect(dart, contains('static String secondIntToString(int source)'));
+    expect(dart, contains('value: MostMapperConverters.secondIntToString(source.value)'));
+    expect(dart, contains('explicitValue: MostMapperConverters.firstIntToString(source.value)'));
   });
 
   test('writes requested output file names', () {

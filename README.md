@@ -46,7 +46,7 @@ C# generation requires the .NET SDK because the generated `.cs` file is passed t
 - Fields support `field: Type`, `field: Type?`, and `{ type: Type, nullable: true, doc: Description }`.
 - Enum models support string and int wire values.
 - Enums can map to and from `String` and `int` when every enum value declares that wire value.
-- `converters` define trusted raw Dart and C# expressions emitted as private helper methods.
+- `converters` define trusted raw Dart and C# expressions emitted as public helper methods.
 - Converter `name` is optional. Use a name only when a mapping must select a specific non-default converter.
 - Field mappings can use `{ from: SourceField, converter: converterName }` to force a named converter, or
   `{ from: SourceField, converter: default }` to force a built-in default converter when available.
@@ -83,7 +83,7 @@ C# generation requires the .NET SDK because the generated `.cs` file is passed t
 
 ## Converter Expressions
 
-Converters are raw code emitted into private helper methods in the generated file. Treat the mapping YAML as trusted
+Converters are raw code emitted into public helper methods in the generated file. Treat the mapping YAML as trusted
 input.
 Converter names are optional. If multiple converters have the same `from` and `to` types, the last converter in the
 file is used by default; mappings can still reference any named converter explicitly. The name `default` is reserved.
@@ -290,7 +290,7 @@ The generator stops before writing output when it finds errors such as:
 - One YAML file is the v1 source of truth. There are no separate `--spec` files.
 - `models` is the only type declaration section. Enums are declared inside `models`.
 - YAML scalar constants only are supported for `{ const: ... }` in v1.
-- Raw converter expressions are emitted into generated private helper methods and are not sandboxed.
+- Raw converter expressions are emitted into generated public helper methods and are not sandboxed.
 - The built-in DateTime converters use UTC ISO text ending in `Z`; custom DateTime converters can override that format.
 - Mapping field names are case-sensitive YAML keys.
 - Output is one generated file per requested target language.
