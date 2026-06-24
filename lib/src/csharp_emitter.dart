@@ -2,6 +2,7 @@ import 'names.dart';
 import 'resolver.dart';
 import 'schema.dart';
 import 'text_helpers.dart';
+import 'type_system.dart';
 
 String emitCSharp(ResolvedSchema resolved) {
   final emitter = _CSharpEmitter(resolved);
@@ -12,17 +13,11 @@ class _CSharpEmitter {
   _CSharpEmitter(this.resolved);
 
   final ResolvedSchema resolved;
-  final _usedConverters = <ConverterDef>{};
   var _converterMethodNames = <ConverterDef, String>{};
 
   String emit() {
-    _usedConverters.clear();
-    _converterMethodNames = {};
-    _buildBody();
-
-    final converters = resolved.convertersToEmit(_usedConverters);
+    final converters = resolved.convertersToEmit(_usedConverters());
     _converterMethodNames = csharpConverterMethodNames(converters);
-    _usedConverters.clear();
     final body = _buildBody();
 
     final buffer = StringBuffer();
@@ -43,6 +38,26 @@ class _CSharpEmitter {
     buffer.write(body);
 
     return buffer.toString();
+  }
+
+  Set<ConverterDef> _usedConverters() {
+    final converters = <ConverterDef>{};
+    for (final model in resolved.dataModels) {
+      if (!model.json) {
+        continue;
+      }
+      for (final field in model.fields.values) {
+        converters.addAll(resolved.jsonConvertersFor(field.type));
+      }
+    }
+    for (final mapping in resolved.schema.mappings) {
+      for (final assignment in resolved.mappingAssignments(mapping)) {
+        if (assignment case ResolvedSourceFieldAssignment(:final conversion)) {
+          converters.addAll(conversion.usedConverters);
+        }
+      }
+    }
+    return converters;
   }
 
   StringBuffer _buildBody() {
@@ -108,7 +123,7 @@ class _CSharpEmitter {
 
     buffer.writeln('public static class ${_enumHelperName(enumDef.name)}');
     buffer.writeln('{');
-    if (_enumHasStrings(enumDef)) {
+    if (resolved.enumHasStrings(enumDef)) {
       buffer.writeln('    public static string ToStringValue(${csharpTypeName(enumDef.name)} value) => value switch');
       buffer.writeln('    {');
       for (final value in enumDef.values.values) {
@@ -137,7 +152,7 @@ class _CSharpEmitter {
       buffer.writeln();
     }
 
-    if (_enumHasInts(enumDef)) {
+    if (resolved.enumHasInts(enumDef)) {
       buffer.writeln('    public static int ToIntValue(${csharpTypeName(enumDef.name)} value) => value switch');
       buffer.writeln('    {');
       for (final value in enumDef.values.values) {
@@ -220,19 +235,15 @@ class _CSharpEmitter {
     buffer.writeln('public static class MostMapperMappings');
     buffer.writeln('{');
     for (final mapping in resolved.schema.mappings) {
-      final fromModel = resolved.dataModel(mapping.from);
-      final toModel = resolved.dataModel(mapping.to);
       buffer.writeln('    public static ${csharpTypeName(mapping.to)} ${_mappingMethodName(mapping.to)}(');
       buffer.writeln('        this ${csharpTypeName(mapping.from)} source)');
       buffer.writeln('    {');
       buffer.writeln('        return new ${csharpTypeName(mapping.to)}');
       buffer.writeln('        {');
-      for (final targetField in toModel.fields.values) {
-        final fieldMapping = mapping.fields[targetField.name];
-        final expression = fieldMapping == null
-            ? _mappedFieldExpression(fromModel.fields[targetField.name]!, targetField)
-            : _explicitFieldExpression(fromModel, targetField, fieldMapping);
-        buffer.writeln('            ${csharpPropertyName(targetField.name)} = $expression,');
+      for (final assignment in resolved.mappingAssignments(mapping)) {
+        buffer.writeln(
+          '            ${csharpPropertyName(assignment.targetField.name)} = ${_assignmentExpression(assignment)},',
+        );
       }
       buffer.writeln('        };');
       buffer.writeln('    }');
@@ -256,85 +267,39 @@ class _CSharpEmitter {
     buffer.writeln('$indent    );');
   }
 
-  String _explicitFieldExpression(DataModelDef fromModel, FieldDef targetField, FieldMapping mapping) {
-    if (mapping.hasConst) {
-      return _csharpConstant(mapping.constValue);
-    }
-    return _mappedFieldExpression(
-      fromModel.fields[mapping.fromField]!,
-      targetField,
-      converterName: mapping.converterName,
-    );
+  String _assignmentExpression(ResolvedFieldAssignment assignment) {
+    return switch (assignment) {
+      ResolvedConstantFieldAssignment(:final constValue) => _csharpConstant(constValue),
+      ResolvedSourceFieldAssignment(:final sourceField, :final conversion) => _convertExpression(
+        conversion,
+        'source.${csharpPropertyName(sourceField.name)}',
+      ),
+    };
   }
 
-  String _mappedFieldExpression(FieldDef sourceField, FieldDef targetField, {String? converterName}) {
-    final access = 'source.${csharpPropertyName(sourceField.name)}';
-    return _convertExpression(sourceField.type, targetField.type, access, converterName: converterName);
-  }
-
-  String _convertExpression(TypeRef from, TypeRef to, String sourceExpression, {String? converterName}) {
-    if (converterName == null && from.sameShape(to)) {
-      return sourceExpression;
-    }
-    if (from.nullable && to.nullable) {
-      final nonNullSource = _nonNullAccess(from, sourceExpression);
-      return '$sourceExpression == null ? null : '
-          '${_convertNonNull(from.nonNullable, to.nonNullable, nonNullSource, converterName: converterName)}';
-    }
-    return _convertNonNull(from.nonNullable, to.nonNullable, sourceExpression, converterName: converterName);
-  }
-
-  String _convertNonNull(TypeRef from, TypeRef to, String sourceExpression, {String? converterName}) {
-    if (converterName == 'default') {
-      final converter = resolved.defaultConverterFor(from, to);
-      if (converter != null) {
-        return _converterCall(converter, sourceExpression);
-      }
-    } else if (converterName != null) {
-      final converter = resolved.converterByName(converterName);
-      if (converter == null) {
-        throw StateError('No C# converter named $converterName.');
-      }
-      return _converterCall(converter, sourceExpression);
-    }
-    if (from.sameShape(to, includeNullability: false)) {
-      return sourceExpression;
-    }
-    if (from.isList && to.isList) {
-      final itemExpression = _convertExpression(from.item!, to.item!, 'item');
-      return '$sourceExpression.Select(item => $itemExpression).ToList()';
-    }
-    if (_isNumeric(from) && _isNumeric(to)) {
-      return switch (to.name) {
+  String _convertExpression(ConversionPlan conversion, String sourceExpression) {
+    return switch (conversion) {
+      IdentityConversionPlan() => sourceExpression,
+      NullableConversionPlan(:final from, :final inner) =>
+        '$sourceExpression == null ? null : ${_convertExpression(inner, _nonNullAccess(from, sourceExpression))}',
+      ListConversionPlan(:final item) =>
+        '$sourceExpression.Select(item => ${_convertExpression(item, 'item')}).ToList()',
+      NumericConversionPlan(:final to) => switch (to.name) {
         'int' => '(int)$sourceExpression',
         'long' => '(long)$sourceExpression',
         'double' || 'num' => '(double)$sourceExpression',
         'decimal' => '(decimal)$sourceExpression',
         _ => sourceExpression,
-      };
-    }
-    if (resolved.isEnum(from.name) && to.name == 'String') {
-      return '${_enumHelperName(from.name)}.ToStringValue($sourceExpression)';
-    }
-    if (from.name == 'String' && resolved.isEnum(to.name)) {
-      return '${_enumHelperName(to.name)}.FromStringValue($sourceExpression)';
-    }
-    if (resolved.isEnum(from.name) && to.name == 'int') {
-      return '${_enumHelperName(from.name)}.ToIntValue($sourceExpression)';
-    }
-    if (from.name == 'int' && resolved.isEnum(to.name)) {
-      return '${_enumHelperName(to.name)}.FromIntValue($sourceExpression)';
-    }
-    if (resolved.isDataModel(from.name) && resolved.isDataModel(to.name) && resolved.mappingFor(from, to) != null) {
-      return '$sourceExpression.${_mappingMethodName(to.name)}()';
-    }
-
-    final converter = resolved.converterFor(from, to);
-    if (converter != null) {
-      return _converterCall(converter, sourceExpression);
-    }
-
-    throw StateError('No C# conversion from $from to $to.');
+      },
+      EnumScalarConversionPlan(:final enumName, :final kind, :final fromEnum) => _enumScalarExpression(
+        enumName,
+        kind,
+        fromEnum,
+        sourceExpression,
+      ),
+      ModelMappingConversionPlan(:final mapping) => '$sourceExpression.${_mappingMethodName(mapping.to)}()',
+      ConverterConversionPlan(:final converter) => _converterCall(converter, sourceExpression),
+    };
   }
 
   String _toJsonExpression(TypeRef type, String expression) {
@@ -349,11 +314,11 @@ class _CSharpEmitter {
       return '$expression.ToJsonMap()';
     }
     if (resolved.isEnum(type.name)) {
-      return _enumUsesStringJson(resolved.enumModel(type.name))
+      return resolved.enumUsesStringJson(resolved.enumModel(type.name))
           ? '${_enumHelperName(type.name)}.ToStringValue($expression)'
           : '${_enumHelperName(type.name)}.ToIntValue($expression)';
     }
-    if (type.name == 'DateTime') {
+    if (type.name == dateTimeType.name) {
       return _jsonToStringExpression(type, expression);
     }
     return expression;
@@ -377,7 +342,7 @@ class _CSharpEmitter {
       return '${csharpTypeName(type.name)}.FromJsonElement($expression)';
     }
     if (resolved.isEnum(type.name)) {
-      return _enumUsesStringJson(resolved.enumModel(type.name))
+      return resolved.enumUsesStringJson(resolved.enumModel(type.name))
           ? '${_enumHelperName(type.name)}.FromStringValue($expression.GetString()!)'
           : '${_enumHelperName(type.name)}.FromIntValue($expression.GetInt32())';
     }
@@ -449,10 +414,8 @@ class _CSharpEmitter {
     };
   }
 
-  bool _isNumeric(TypeRef type) => {'int', 'long', 'double', 'num', 'decimal'}.contains(type.name);
-
   String _jsonToStringExpression(TypeRef type, String sourceExpression) {
-    final converter = resolved.converterFor(type, const TypeRef(name: 'String', nullable: false));
+    final converter = resolved.converterFor(type, stringType);
     if (converter == null) {
       throw StateError('No C# JSON converter from $type to String.');
     }
@@ -460,7 +423,7 @@ class _CSharpEmitter {
   }
 
   String _jsonFromStringExpression(TypeRef type, String sourceExpression) {
-    final converter = resolved.converterFor(const TypeRef(name: 'String', nullable: false), type);
+    final converter = resolved.converterFor(stringType, type);
     if (converter == null) {
       throw StateError('No C# JSON converter from String to $type.');
     }
@@ -468,16 +431,18 @@ class _CSharpEmitter {
   }
 
   String _converterCall(ConverterDef converter, String sourceExpression) {
-    _usedConverters.add(converter);
     final methodName = _converterMethodNames[converter] ?? csharpConverterBaseMethodName(converter);
     return 'MostMapperConverters.$methodName($sourceExpression)';
   }
 
-  bool _enumHasStrings(EnumModelDef enumDef) => enumDef.values.values.every((value) => value.stringValue != null);
-
-  bool _enumHasInts(EnumModelDef enumDef) => enumDef.values.values.every((value) => value.intValue != null);
-
-  bool _enumUsesStringJson(EnumModelDef enumDef) => _enumHasStrings(enumDef);
+  String _enumScalarExpression(String enumName, EnumScalarKind kind, bool fromEnum, String sourceExpression) {
+    return switch ((kind, fromEnum)) {
+      (EnumScalarKind.string, true) => '${_enumHelperName(enumName)}.ToStringValue($sourceExpression)',
+      (EnumScalarKind.string, false) => '${_enumHelperName(enumName)}.FromStringValue($sourceExpression)',
+      (EnumScalarKind.int, true) => '${_enumHelperName(enumName)}.ToIntValue($sourceExpression)',
+      (EnumScalarKind.int, false) => '${_enumHelperName(enumName)}.FromIntValue($sourceExpression)',
+    };
+  }
 
   String _enumHelperName(String enumName) => '${csharpTypeName(enumName)}Conversions';
 
