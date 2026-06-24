@@ -6,15 +6,11 @@ import 'dart:math';
 class _MostMapperConverters {
   const _MostMapperConverters._();
 
-  static String _mostMapperConverter0(DateTime source) {
-    return (source.toUtc().toIso8601String().replaceFirst(RegExp(r'\.\d{3,6}Z$'), 'Z'));
+  static String _dateTimeToString(DateTime source) {
+    return (source.toUtc().toIso8601String());
   }
 
-  static DateTime _mostMapperConverter1(String source) {
-    return (DateTime.parse(source).toUtc());
-  }
-
-  static double _mostMapperConverter2(Money source) {
+  static double _moneyToDecimal(Money source) {
     return (source.value / pow(10, source.fractionalUnits));
   }
 
@@ -223,11 +219,11 @@ ModelB mapModelBWireToModelB(ModelBWire source) {
 ModelAWire mapModelAToModelAWire(ModelA source) {
   return ModelAWire(
     id: source.jsonFieldName,
-    amount: _MostMapperConverters._mostMapperConverter2(source.amount),
+    amount: _MostMapperConverters._moneyToDecimal(source.amount),
     status: paymentStatusToString(source.status),
     statusCode: paymentStatusToInt(source.status),
     bs: source.bs.map((item) => mapModelBToModelBWire(item)).toList(),
-    createdAt: source.createdAt == null ? null : _MostMapperConverters._mostMapperConverter0(source.createdAt!),
+    createdAt: source.createdAt == null ? null : _MostMapperConverters._dateTimeToString(source.createdAt!),
     someField: null,
   );
 }

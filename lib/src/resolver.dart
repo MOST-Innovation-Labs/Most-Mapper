@@ -11,13 +11,12 @@ final _defaultConverters = [
     name: null,
     from: _dateTimeType,
     to: _stringType,
-    dart: DartCodeSpec(
-      imports: [],
-      expression: "source.toUtc().toIso8601String().replaceFirst(RegExp(r'\\.\\d{3,6}Z\$'), 'Z')",
-    ),
+    dart: DartCodeSpec(imports: [], expression: 'source.toUtc().toIso8601String()'),
     csharp: CSharpCodeSpec(
       usings: ['System.Globalization'],
-      expression: "source.ToUniversalTime().ToString(\"yyyy-MM-dd'T'HH:mm:ss'Z'\", CultureInfo.InvariantCulture)",
+      expression:
+          'source.ToUniversalTime().ToString("yyyy-MM-dd\'T\'HH:mm:ss\'Z\'", '
+          'System.Globalization.CultureInfo.InvariantCulture)',
     ),
   ),
   ConverterDef(
@@ -28,7 +27,10 @@ final _defaultConverters = [
     csharp: CSharpCodeSpec(
       usings: ['System.Globalization'],
       expression:
-          "DateTime.ParseExact(source, \"yyyy-MM-dd'T'HH:mm:ss'Z'\", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal)",
+          'System.DateTime.ParseExact(source, "yyyy-MM-dd\'T\'HH:mm:ss\'Z\'", '
+          'System.Globalization.CultureInfo.InvariantCulture, '
+          'System.Globalization.DateTimeStyles.AssumeUniversal | '
+          'System.Globalization.DateTimeStyles.AdjustToUniversal)',
     ),
   ),
 ];
@@ -89,6 +91,13 @@ class ResolvedSchema {
       }
     }
     return null;
+  }
+
+  List<ConverterDef> convertersToEmit(Set<ConverterDef> usedConverters) {
+    return [
+      for (final converter in converters)
+        if (!_defaultConverters.contains(converter) || usedConverters.contains(converter)) converter,
+    ];
   }
 
   bool canConvert(TypeRef from, TypeRef to) {
@@ -194,8 +203,6 @@ class ResolvedSchema {
 
   void _validateConverterNames(List<String> errors) {
     final seen = <String>{};
-    final dartNames = <String, String>{};
-    final csharpNames = <String, String>{};
     for (final converter in converters) {
       final converterName = converter.name;
       if (converterName == 'default') {
@@ -204,10 +211,6 @@ class ResolvedSchema {
       if (converterName != null && !seen.add(converterName)) {
         errors.add('Duplicate converter name $converterName.');
       }
-      final index = converters.indexOf(converter);
-      final rawName = converterName ?? 'converter[$index]';
-      _recordConverterIdentifier(dartNames, dartConverterMethodName(converterName, index), rawName, 'Dart', errors);
-      _recordConverterIdentifier(csharpNames, csharpConverterMethodName(converterName, index), rawName, 'C#', errors);
     }
   }
 
@@ -304,7 +307,8 @@ class ResolvedSchema {
         !converter.to.sameShape(to.nonNullable, includeNullability: false)) {
       errors.add(
         'mappings ${mapping.from}->${mapping.to}.$targetFieldName converter $converterName has type '
-        '${converter.from.display}->${converter.to.display}, expected ${from.nonNullable.display}->${to.nonNullable.display}.',
+        '${converter.from.display}->${converter.to.display}, expected '
+        '${from.nonNullable.display}->${to.nonNullable.display}.',
       );
     }
   }
@@ -364,20 +368,6 @@ class ResolvedSchema {
     final previous = seen[identifier];
     if (previous != null) {
       errors.add('$language identifier collision in $modelName: $previous and $raw both become $identifier.');
-    }
-    seen[identifier] = raw;
-  }
-
-  void _recordConverterIdentifier(
-    Map<String, String> seen,
-    String identifier,
-    String raw,
-    String language,
-    List<String> errors,
-  ) {
-    final previous = seen[identifier];
-    if (previous != null) {
-      errors.add('$language converter name collision: $previous and $raw both become $identifier.');
     }
     seen[identifier] = raw;
   }

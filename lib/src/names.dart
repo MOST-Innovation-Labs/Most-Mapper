@@ -1,5 +1,7 @@
 import 'package:recase/recase.dart';
 
+import 'schema.dart';
+
 const _dartKeywords = {
   'abstract',
   'as',
@@ -76,8 +78,11 @@ String dartFieldName(String raw) {
 
 String dartEnumValueName(String raw) => dartFieldName(raw);
 
-String dartConverterMethodName(String? raw, int index) =>
-    raw == null ? '_mostMapperConverter$index' : '_${dartFieldName(raw)}';
+String dartConverterBaseMethodName(ConverterDef converter) => '_${dartFieldName(_converterRawName(converter))}';
+
+Map<ConverterDef, String> dartConverterMethodNames(Iterable<ConverterDef> converters) {
+  return _converterMethodNames(converters, dartConverterBaseMethodName);
+}
 
 String csharpTypeName(String raw) => _validIdentifier(ReCase(raw).pascalCase, fallback: 'GeneratedType');
 
@@ -85,8 +90,37 @@ String csharpPropertyName(String raw) => _validIdentifier(ReCase(raw).pascalCase
 
 String csharpEnumValueName(String raw) => csharpPropertyName(raw);
 
-String csharpConverterMethodName(String? raw, int index) =>
-    raw == null ? 'MostMapperConvert$index' : 'MostMapperConvert${csharpTypeName(raw)}';
+String csharpConverterBaseMethodName(ConverterDef converter) => csharpTypeName(_converterRawName(converter));
+
+Map<ConverterDef, String> csharpConverterMethodNames(Iterable<ConverterDef> converters) {
+  return _converterMethodNames(converters, csharpConverterBaseMethodName);
+}
+
+String _converterRawName(ConverterDef converter) {
+  return converter.name ?? '${_converterTypeName(converter.from)}To${_converterTypeName(converter.to)}';
+}
+
+String _converterTypeName(TypeRef type) {
+  if (type.isList) {
+    return 'List${_converterTypeName(type.item!)}';
+  }
+  return csharpTypeName(type.name);
+}
+
+Map<ConverterDef, String> _converterMethodNames(
+  Iterable<ConverterDef> converters,
+  String Function(ConverterDef converter) baseName,
+) {
+  final names = <ConverterDef, String>{};
+  final counts = <String, int>{};
+  for (final converter in converters) {
+    final base = baseName(converter);
+    final ordinal = (counts[base] ?? 0) + 1;
+    counts[base] = ordinal;
+    names[converter] = ordinal == 1 ? base : '$base$ordinal';
+  }
+  return names;
+}
 
 String _validIdentifier(String value, {required String fallback}) {
   final buffer = StringBuffer();

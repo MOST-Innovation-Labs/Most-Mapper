@@ -12,15 +12,27 @@ class _CSharpEmitter {
   _CSharpEmitter(this.resolved);
 
   final ResolvedSchema resolved;
+  final _usedConverters = <ConverterDef>{};
+  Set<ConverterDef>? _scopeUsedConverters;
+  var _converterMethodNames = <ConverterDef, String>{};
 
   String emit() {
+    _usedConverters.clear();
+    _converterMethodNames = {};
+    _buildBody();
+
+    final converters = resolved.convertersToEmit(_usedConverters);
+    _converterMethodNames = csharpConverterMethodNames(converters);
+    _usedConverters.clear();
+    final body = _buildBody();
+
     final buffer = StringBuffer();
     buffer.writeln('// GENERATED CODE - DO NOT MODIFY BY HAND.');
     buffer.writeln('#nullable enable');
     buffer.writeln();
 
     final usings = <String>{'System', 'System.Collections.Generic', 'System.Linq', 'System.Text.Json'};
-    for (final converter in resolved.converters) {
+    for (final converter in converters) {
       usings.addAll(converter.csharp.usings);
     }
     for (final using in usings.toList()..sort()) {
@@ -28,20 +40,26 @@ class _CSharpEmitter {
     }
     buffer.writeln();
 
-    if (resolved.dataModels.any((model) => model.json)) {
-      _writeJsonHelper(buffer);
-    }
-    for (final enumDef in resolved.enumModels) {
-      _writeEnum(buffer, enumDef);
-    }
-    for (final model in resolved.dataModels) {
-      _writeDataModel(buffer, model);
-    }
-    if (resolved.schema.mappings.isNotEmpty) {
-      _writeMappings(buffer);
-    }
+    buffer.write(body);
 
     return buffer.toString();
+  }
+
+  StringBuffer _buildBody() {
+    final body = StringBuffer();
+    if (resolved.dataModels.any((model) => model.json)) {
+      _writeJsonHelper(body);
+    }
+    for (final enumDef in resolved.enumModels) {
+      _writeEnum(body, enumDef);
+    }
+    for (final model in resolved.dataModels) {
+      _writeDataModel(body, model);
+    }
+    if (resolved.schema.mappings.isNotEmpty) {
+      _writeMappings(body);
+    }
+    return body;
   }
 
   void _writeJsonHelper(StringBuffer buffer) {
@@ -50,7 +68,8 @@ class _CSharpEmitter {
     buffer.writeln('    public static JsonElement? Optional(JsonElement json, string name)');
     buffer.writeln('    {');
     buffer.writeln(
-      '        return json.TryGetProperty(name, out var value) && value.ValueKind != JsonValueKind.Null ? value : null;',
+      '        return json.TryGetProperty(name, out var value) && '
+      'value.ValueKind != JsonValueKind.Null ? value : null;',
     );
     buffer.writeln('    }');
     buffer.writeln('}');
@@ -140,38 +159,45 @@ class _CSharpEmitter {
     }
 
     if (model.json) {
+      final usedConverters = <ConverterDef>{};
+      final previousUsedConverters = _scopeUsedConverters;
+      _scopeUsedConverters = usedConverters;
       buffer.writeln();
-      buffer.writeln('    public Dictionary<string, object?> ToJsonMap()');
-      buffer.writeln('    {');
-      buffer.writeln('        return new Dictionary<string, object?>');
-      buffer.writeln('        {');
-      for (final field in model.fields.values) {
-        buffer.writeln(
-          '            [${csharpStringLiteral(field.name)}] = '
-          '${_toJsonExpression(field.type, csharpPropertyName(field.name))},',
-        );
+      try {
+        buffer.writeln('    public Dictionary<string, object?> ToJsonMap()');
+        buffer.writeln('    {');
+        buffer.writeln('        return new Dictionary<string, object?>');
+        buffer.writeln('        {');
+        for (final field in model.fields.values) {
+          buffer.writeln(
+            '            [${csharpStringLiteral(field.name)}] = '
+            '${_toJsonExpression(field.type, csharpPropertyName(field.name))},',
+          );
+        }
+        buffer.writeln('        };');
+        buffer.writeln('    }');
+        buffer.writeln();
+        buffer.writeln('    public string ToJson() => JsonSerializer.Serialize(ToJsonMap());');
+        buffer.writeln();
+        buffer.writeln('    public static ${csharpTypeName(model.name)} FromJson(string json)');
+        buffer.writeln('    {');
+        buffer.writeln('        using var document = JsonDocument.Parse(json);');
+        buffer.writeln('        return FromJsonElement(document.RootElement);');
+        buffer.writeln('    }');
+        buffer.writeln();
+        buffer.writeln('    public static ${csharpTypeName(model.name)} FromJsonElement(JsonElement json)');
+        buffer.writeln('    {');
+        buffer.writeln('        return new ${csharpTypeName(model.name)}');
+        buffer.writeln('        {');
+        for (final field in model.fields.values) {
+          buffer.writeln('            ${csharpPropertyName(field.name)} = ${_fieldFromJsonExpression(field)},');
+        }
+        buffer.writeln('        };');
+        buffer.writeln('    }');
+      } finally {
+        _scopeUsedConverters = previousUsedConverters;
       }
-      buffer.writeln('        };');
-      buffer.writeln('    }');
-      buffer.writeln();
-      buffer.writeln('    public string ToJson() => JsonSerializer.Serialize(ToJsonMap());');
-      buffer.writeln();
-      buffer.writeln('    public static ${csharpTypeName(model.name)} FromJson(string json)');
-      buffer.writeln('    {');
-      buffer.writeln('        using var document = JsonDocument.Parse(json);');
-      buffer.writeln('        return FromJsonElement(document.RootElement);');
-      buffer.writeln('    }');
-      buffer.writeln();
-      buffer.writeln('    public static ${csharpTypeName(model.name)} FromJsonElement(JsonElement json)');
-      buffer.writeln('    {');
-      buffer.writeln('        return new ${csharpTypeName(model.name)}');
-      buffer.writeln('        {');
-      for (final field in model.fields.values) {
-        buffer.writeln('            ${csharpPropertyName(field.name)} = ${_fieldFromJsonExpression(field)},');
-      }
-      buffer.writeln('        };');
-      buffer.writeln('    }');
-      _writeConverterMethods(buffer, indent: '    ');
+      _writeConverterMethods(buffer, indent: '    ', usedConverters: usedConverters);
     }
 
     buffer.writeln('}');
@@ -181,39 +207,53 @@ class _CSharpEmitter {
   void _writeMappings(StringBuffer buffer) {
     buffer.writeln('public static class MostMapperMappings');
     buffer.writeln('{');
-    for (final mapping in resolved.schema.mappings) {
-      final fromModel = resolved.dataModel(mapping.from);
-      final toModel = resolved.dataModel(mapping.to);
-      buffer.writeln(
-        '    public static ${csharpTypeName(mapping.to)} ${_mappingFunctionName(mapping.from, mapping.to)}(',
-      );
-      buffer.writeln('        ${csharpTypeName(mapping.from)} source)');
-      buffer.writeln('    {');
-      buffer.writeln('        return new ${csharpTypeName(mapping.to)}');
-      buffer.writeln('        {');
-      for (final targetField in toModel.fields.values) {
-        final fieldMapping = mapping.fields[targetField.name];
-        final expression = fieldMapping == null
-            ? _mappedFieldExpression(fromModel.fields[targetField.name]!, targetField)
-            : _explicitFieldExpression(fromModel, targetField, fieldMapping);
-        buffer.writeln('            ${csharpPropertyName(targetField.name)} = $expression,');
+    final usedConverters = <ConverterDef>{};
+    final previousUsedConverters = _scopeUsedConverters;
+    _scopeUsedConverters = usedConverters;
+    try {
+      for (final mapping in resolved.schema.mappings) {
+        final fromModel = resolved.dataModel(mapping.from);
+        final toModel = resolved.dataModel(mapping.to);
+        buffer.writeln(
+          '    public static ${csharpTypeName(mapping.to)} ${_mappingFunctionName(mapping.from, mapping.to)}(',
+        );
+        buffer.writeln('        ${csharpTypeName(mapping.from)} source)');
+        buffer.writeln('    {');
+        buffer.writeln('        return new ${csharpTypeName(mapping.to)}');
+        buffer.writeln('        {');
+        for (final targetField in toModel.fields.values) {
+          final fieldMapping = mapping.fields[targetField.name];
+          final expression = fieldMapping == null
+              ? _mappedFieldExpression(fromModel.fields[targetField.name]!, targetField)
+              : _explicitFieldExpression(fromModel, targetField, fieldMapping);
+          buffer.writeln('            ${csharpPropertyName(targetField.name)} = $expression,');
+        }
+        buffer.writeln('        };');
+        buffer.writeln('    }');
+        buffer.writeln();
       }
-      buffer.writeln('        };');
-      buffer.writeln('    }');
-      buffer.writeln();
+    } finally {
+      _scopeUsedConverters = previousUsedConverters;
     }
-    _writeConverterMethods(buffer, indent: '    ');
+    _writeConverterMethods(buffer, indent: '    ', usedConverters: usedConverters);
     buffer.writeln('}');
     buffer.writeln();
   }
 
-  void _writeConverterMethods(StringBuffer buffer, {required String indent}) {
+  void _writeConverterMethods(
+    StringBuffer buffer, {
+    required String indent,
+    required Set<ConverterDef> usedConverters,
+  }) {
+    final converters = resolved.convertersToEmit(usedConverters);
+    if (converters.isEmpty) {
+      return;
+    }
     buffer.writeln();
-    for (var index = 0; index < resolved.converters.length; index++) {
-      final converter = resolved.converters[index];
+    for (final converter in converters) {
+      final methodName = _converterMethodNames[converter] ?? csharpConverterBaseMethodName(converter);
       buffer.writeln(
-        '${indent}private static ${_csharpType(converter.to)} ${csharpConverterMethodName(converter.name, index)}('
-        '${_csharpType(converter.from)} source)',
+        '${indent}private static ${_csharpType(converter.to)} $methodName(${_csharpType(converter.from)} source)',
       );
       buffer.writeln('$indent{');
       buffer.writeln('$indent    return (${converter.csharp.expression.trim()});');
@@ -369,7 +409,7 @@ class _CSharpEmitter {
       'int' => 'int',
       'double' || 'num' => 'double',
       'decimal' => 'decimal',
-      'DateTime' => 'DateTime',
+      'DateTime' => 'System.DateTime',
       _ => csharpTypeName(name),
     };
   }
@@ -430,8 +470,10 @@ class _CSharpEmitter {
   }
 
   String _converterCall(ConverterDef converter, String sourceExpression) {
-    final index = resolved.converters.indexOf(converter);
-    return '${csharpConverterMethodName(converter.name, index)}($sourceExpression)';
+    _usedConverters.add(converter);
+    _scopeUsedConverters?.add(converter);
+    final methodName = _converterMethodNames[converter] ?? csharpConverterBaseMethodName(converter);
+    return '$methodName($sourceExpression)';
   }
 
   bool _enumHasStrings(EnumModelDef enumDef) => enumDef.values.values.every((value) => value.stringValue != null);

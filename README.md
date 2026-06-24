@@ -11,22 +11,22 @@ Generate both Dart and C#:
 ```bash
 dart run most_mapper \
   --mapping example/basic/mapping.yaml \
-  --dart-out-dir example/basic/generated/dart \
+  --dart-out-dir example/basic/output/dart \
   --dart-file-name models_mapper.g.dart \
-  --csharp-out-dir example/basic/generated/csharp \
+  --csharp-out-dir example/basic/output/csharp \
   --csharp-file-name ModelsMapper.g.cs
 ```
 
 Generate Dart only:
 
 ```bash
-dart run most_mapper --mapping mapping.yaml --dart-out-dir generated/dart
+dart run most_mapper --mapping mapping.yaml --dart-out-dir output/dart
 ```
 
 Generate C# only:
 
 ```bash
-dart run most_mapper --mapping mapping.yaml --csharp-out-dir generated/csharp
+dart run most_mapper --mapping mapping.yaml --csharp-out-dir output/csharp
 ```
 
 Defaults:

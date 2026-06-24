@@ -64,6 +64,7 @@ GenerationResult generate(GeneratorOptions options) {
     Directory(output.directory).createSync(recursive: true);
     File(output.path).writeAsStringSync(output.contents);
     output.format();
+    output.validate();
     written.add(output.path);
   }
   return GenerationResult(written);
@@ -104,6 +105,16 @@ class _OutputFile {
       _formatCSharp(path);
     }
   }
+
+  void validate() {
+    if (fileName.endsWith('.dart')) {
+      _runValidator('dart', ['analyze', path]);
+      return;
+    }
+    if (fileName.endsWith('.cs')) {
+      _validateCSharp(path);
+    }
+  }
 }
 
 void _formatCSharp(String path) {
@@ -137,14 +148,46 @@ void _formatCSharp(String path) {
   }
 }
 
+void _validateCSharp(String path) {
+  final tempDir = Directory.systemTemp.createTempSync('most_mapper_dotnet_validate_');
+  try {
+    final project = File('${tempDir.path}/MostMapperValidate.csproj');
+    project.writeAsStringSync('''
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="${_xmlEscape(File(path).absolute.path)}" />
+  </ItemGroup>
+</Project>
+''');
+    _runValidator('dotnet', ['build', project.path, '--nologo', '-v', 'quiet']);
+  } finally {
+    tempDir.deleteSync(recursive: true);
+  }
+}
+
 void _runFormatter(String executable, List<String> arguments) {
+  _runCommand(executable, arguments, 'formatter');
+}
+
+void _runValidator(String executable, List<String> arguments) {
+  _runCommand(executable, arguments, 'validation');
+}
+
+void _runCommand(String executable, List<String> arguments, String action) {
   final result = Process.runSync(executable, arguments);
   if (result.exitCode == 0) {
     return;
   }
 
   final output = [result.stdout, result.stderr].where((value) => value.toString().trim().isNotEmpty).join('\n');
-  throw MapperException('$executable formatter failed with exit code ${result.exitCode}.\n$output');
+  throw MapperException('$executable $action failed with exit code ${result.exitCode}.\n$output');
 }
 
 String _xmlEscape(String value) {

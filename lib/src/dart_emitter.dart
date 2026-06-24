@@ -12,15 +12,26 @@ class _DartEmitter {
   _DartEmitter(this.resolved);
 
   final ResolvedSchema resolved;
+  final _usedConverters = <ConverterDef>{};
+  var _converterMethodNames = <ConverterDef, String>{};
 
   String emit() {
+    _usedConverters.clear();
+    _converterMethodNames = {};
+    _buildBody();
+
+    final converters = resolved.convertersToEmit(_usedConverters);
+    _converterMethodNames = dartConverterMethodNames(converters);
+    _usedConverters.clear();
+    final body = _buildBody();
+
     final buffer = StringBuffer();
     buffer.writeln('// GENERATED CODE - DO NOT MODIFY BY HAND.');
     buffer.writeln('// ignore_for_file: unused_element');
     buffer.writeln();
 
     final imports = <String>{};
-    for (final converter in resolved.converters) {
+    for (final converter in converters) {
       imports.addAll(converter.dart.imports);
     }
     for (final import in imports.toList()..sort()) {
@@ -30,30 +41,36 @@ class _DartEmitter {
       buffer.writeln();
     }
 
-    _writeConverters(buffer);
-    for (final enumDef in resolved.enumModels) {
-      _writeEnum(buffer, enumDef);
-    }
-    for (final model in resolved.dataModels) {
-      _writeDataModel(buffer, model);
-    }
-    for (final mapping in resolved.schema.mappings) {
-      _writeMapping(buffer, mapping);
-    }
+    _writeConverters(buffer, converters);
+    buffer.write(body);
 
     return buffer.toString();
   }
 
-  void _writeConverters(StringBuffer buffer) {
+  StringBuffer _buildBody() {
+    final body = StringBuffer();
+    for (final enumDef in resolved.enumModels) {
+      _writeEnum(body, enumDef);
+    }
+    for (final model in resolved.dataModels) {
+      _writeDataModel(body, model);
+    }
+    for (final mapping in resolved.schema.mappings) {
+      _writeMapping(body, mapping);
+    }
+    return body;
+  }
+
+  void _writeConverters(StringBuffer buffer, List<ConverterDef> converters) {
+    if (converters.isEmpty) {
+      return;
+    }
     buffer.writeln('class _MostMapperConverters {');
     buffer.writeln('  const _MostMapperConverters._();');
     buffer.writeln();
-    for (var index = 0; index < resolved.converters.length; index++) {
-      final converter = resolved.converters[index];
-      buffer.writeln(
-        '  static ${_dartType(converter.to)} ${dartConverterMethodName(converter.name, index)}('
-        '${_dartType(converter.from)} source) {',
-      );
+    for (final converter in converters) {
+      final methodName = _converterMethodNames[converter] ?? dartConverterBaseMethodName(converter);
+      buffer.writeln('  static ${_dartType(converter.to)} $methodName(${_dartType(converter.from)} source) {');
       buffer.writeln('    return (${converter.dart.expression.trim()});');
       buffer.writeln('  }');
       buffer.writeln();
@@ -356,8 +373,9 @@ class _DartEmitter {
   }
 
   String _converterCall(ConverterDef converter, String sourceExpression) {
-    final index = resolved.converters.indexOf(converter);
-    return '_MostMapperConverters.${dartConverterMethodName(converter.name, index)}($sourceExpression)';
+    _usedConverters.add(converter);
+    final methodName = _converterMethodNames[converter] ?? dartConverterBaseMethodName(converter);
+    return '_MostMapperConverters.$methodName($sourceExpression)';
   }
 
   bool _enumHasStrings(EnumModelDef enumDef) => enumDef.values.values.every((value) => value.stringValue != null);

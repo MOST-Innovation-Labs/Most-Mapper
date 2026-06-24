@@ -46,14 +46,16 @@ void main() {
     expect(output, isNot(contains('_mostMapperDateTimeToJson')));
     expect(output, isNot(contains('_mostMapperDateTimeFromJson')));
     expect(output, contains('class _MostMapperConverters'));
-    expect(output, contains('static double _mostMapperConverter2(Money source)'));
+    expect(output, isNot(contains('static String _dateTimeToString(DateTime source)')));
+    expect(output, isNot(contains('static DateTime _stringToDateTime(String source)')));
+    expect(output, contains('static double _moneyToDecimal(Money source)'));
     expect(output, contains('return (source.value / pow(10, source.fractionalUnits));'));
     expect(output, contains('_MostMapperConverters._offsetDateTimeToString(createdAt!)'));
     expect(output, contains("_MostMapperConverters._offsetStringToDateTime(json['createdAt'] as String)"));
     expect(output, contains('mapModelBToModelBWire(item)'));
     expect(output, contains('id: source.jsonFieldName'));
     expect(output, isNot(contains('id: source.jsonFieldName == null ? null : source.jsonFieldName!')));
-    expect(output, contains('_MostMapperConverters._mostMapperConverter2(source.amount)'));
+    expect(output, contains('_MostMapperConverters._moneyToDecimal(source.amount)'));
     expect(output, contains('_MostMapperConverters._offsetDateTimeToString(source.datetime)'));
     expect(output, contains('withoutOffsetUtc.subtract(offset)'));
     expect(output, contains('someField: null'));
@@ -68,14 +70,16 @@ void main() {
     expect(output, contains('PaymentStatusConversions.ToIntValue(source.Status)'));
     expect(output, isNot(contains('MostMapperJson.DateTimeToJson')));
     expect(output, isNot(contains('MostMapperJson.DateTimeFromJson')));
-    expect(output, contains('private static decimal MostMapperConvert2(Money source)'));
-    expect(output, contains('MostMapperConvertOffsetDateTimeToString(CreatedAt.Value)'));
-    expect(output, contains('MostMapperConvertOffsetStringToDateTime(createdAtJson.GetString()!)'));
+    expect(output, isNot(contains('private static string DateTimeToString(System.DateTime source)')));
+    expect(output, isNot(contains('private static System.DateTime StringToDateTime(string source)')));
+    expect(output, contains('private static decimal MoneyToDecimal(Money source)'));
+    expect(output, contains('OffsetDateTimeToString(CreatedAt.Value)'));
+    expect(output, contains('OffsetStringToDateTime(createdAtJson.GetString()!)'));
     expect(output, contains('MostMapperMappings.MapModelBToModelBWire(item)'));
     expect(output, contains('Id = source.JsonFieldName'));
     expect(output, isNot(contains('Id = source.JsonFieldName == null ? null : source.JsonFieldName')));
-    expect(output, contains('MostMapperConvert2(source.Amount)'));
-    expect(output, contains('MostMapperConvertOffsetDateTimeToString(source.Datetime)'));
+    expect(output, contains('MoneyToDecimal(source.Amount)'));
+    expect(output, contains('OffsetDateTimeToString(source.Datetime)'));
     expect(output, contains('DateTimeOffset.ParseExact('));
     expect(output, contains('SomeField = null'));
   });
@@ -112,8 +116,11 @@ models:
 
     expect(() => resolved.validate(), returnsNormally);
     expect(resolved.converterFor(parseType('DateTime'), parseType('String'))!.name, isNull);
-    expect(emitDart(resolved), contains("toIso8601String().replaceFirst(RegExp(r'\\.\\d{3,6}Z\$'), 'Z')"));
-    expect(emitCSharp(resolved), contains('ToString("yyyy-MM-dd\'T\'HH:mm:ss\'Z\'", CultureInfo.InvariantCulture)'));
+    expect(emitDart(resolved), contains('source.toUtc().toIso8601String()'));
+    expect(
+      emitCSharp(resolved),
+      contains('ToString("yyyy-MM-dd\'T\'HH:mm:ss\'Z\'", System.Globalization.CultureInfo.InvariantCulture)'),
+    );
   });
 
   test('allows unnamed converters and converter default selector', () {
@@ -147,8 +154,17 @@ mappings:
     resolved.validate();
 
     final dart = emitDart(resolved);
-    expect(dart, contains('defaultValue: _MostMapperConverters._mostMapperConverter0(source.value)'));
-    expect(dart, contains('implicitValue: _MostMapperConverters._mostMapperConverter2(source.value)'));
+    expect(dart, contains('static String _dateTimeToString(DateTime source)'));
+    expect(dart, contains('static String _dateTimeToString2(DateTime source)'));
+    expect(dart, contains('defaultValue: _MostMapperConverters._dateTimeToString(source.value)'));
+    expect(dart, contains('implicitValue: _MostMapperConverters._dateTimeToString2(source.value)'));
+    expect(dart, isNot(contains('static DateTime _stringToDateTime(String source)')));
+
+    final csharp = emitCSharp(resolved);
+    expect(csharp, contains('private static string DateTimeToString(System.DateTime source)'));
+    expect(csharp, contains('private static string DateTimeToString2(System.DateTime source)'));
+    expect(csharp, contains('DefaultValue = DateTimeToString(source.Value)'));
+    expect(csharp, contains('ImplicitValue = DateTimeToString2(source.Value)'));
   });
 
   test('uses the last converter for a type pair by default and named converters explicitly', () {
@@ -295,7 +311,9 @@ converters:
           final offset = source.timeZoneOffset;
           final sign = offset.isNegative ? '-' : '+';
           final absoluteOffset = offset.abs();
-          return '${source.year.toString().padLeft(4, '0')}-${two(source.month)}-${two(source.day)}T${two(source.hour)}:${two(source.minute)}:${two(source.second)}$sign${two(absoluteOffset.inHours)}:${two(absoluteOffset.inMinutes.remainder(60))}';
+          return '${source.year.toString().padLeft(4, '0')}-${two(source.month)}-${two(source.day)}T'
+              '${two(source.hour)}:${two(source.minute)}:${two(source.second)}$sign'
+              '${two(absoluteOffset.inHours)}:${two(absoluteOffset.inMinutes.remainder(60))}';
         })()
     csharp:
       usings: ["System", "System.Globalization"]
