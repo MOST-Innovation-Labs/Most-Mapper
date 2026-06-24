@@ -106,11 +106,13 @@ public class Money
 
     private static System.DateTime OffsetStringToDateTime(string source)
     {
-        return (DateTimeOffset.ParseExact(
-    source,
-    "yyyy-MM-dd'T'HH:mm:sszzz",
-    CultureInfo.InvariantCulture
-).UtcDateTime);
+        return (
+            DateTimeOffset.ParseExact(
+                source,
+                "yyyy-MM-dd'T'HH:mm:sszzz",
+                CultureInfo.InvariantCulture
+            ).UtcDateTime
+        );
     }
 
 }
@@ -170,11 +172,13 @@ public class ModelA
 
     private static System.DateTime OffsetStringToDateTime(string source)
     {
-        return (DateTimeOffset.ParseExact(
-    source,
-    "yyyy-MM-dd'T'HH:mm:sszzz",
-    CultureInfo.InvariantCulture
-).UtcDateTime);
+        return (
+            DateTimeOffset.ParseExact(
+                source,
+                "yyyy-MM-dd'T'HH:mm:sszzz",
+                CultureInfo.InvariantCulture
+            ).UtcDateTime
+        );
     }
 
 }
@@ -240,11 +244,13 @@ public class ModelAWire
 
     private static System.DateTime OffsetStringToDateTime(string source)
     {
-        return (DateTimeOffset.ParseExact(
-    source,
-    "yyyy-MM-dd'T'HH:mm:sszzz",
-    CultureInfo.InvariantCulture
-).UtcDateTime);
+        return (
+            DateTimeOffset.ParseExact(
+                source,
+                "yyyy-MM-dd'T'HH:mm:sszzz",
+                CultureInfo.InvariantCulture
+            ).UtcDateTime
+        );
     }
 
 }
@@ -295,11 +301,13 @@ public class ModelB
 
     private static System.DateTime OffsetStringToDateTime(string source)
     {
-        return (DateTimeOffset.ParseExact(
-    source,
-    "yyyy-MM-dd'T'HH:mm:sszzz",
-    CultureInfo.InvariantCulture
-).UtcDateTime);
+        return (
+            DateTimeOffset.ParseExact(
+                source,
+                "yyyy-MM-dd'T'HH:mm:sszzz",
+                CultureInfo.InvariantCulture
+            ).UtcDateTime
+        );
     }
 
 }
@@ -350,11 +358,13 @@ public class ModelBWire
 
     private static System.DateTime OffsetStringToDateTime(string source)
     {
-        return (DateTimeOffset.ParseExact(
-    source,
-    "yyyy-MM-dd'T'HH:mm:sszzz",
-    CultureInfo.InvariantCulture
-).UtcDateTime);
+        return (
+            DateTimeOffset.ParseExact(
+                source,
+                "yyyy-MM-dd'T'HH:mm:sszzz",
+                CultureInfo.InvariantCulture
+            ).UtcDateTime
+        );
     }
 
 }
@@ -414,11 +424,13 @@ public static class MostMapperMappings
 
     private static System.DateTime OffsetStringToDateTime(string source)
     {
-        return (DateTimeOffset.ParseExact(
-    source,
-    "yyyy-MM-dd'T'HH:mm:sszzz",
-    CultureInfo.InvariantCulture
-).UtcDateTime);
+        return (
+            DateTimeOffset.ParseExact(
+                source,
+                "yyyy-MM-dd'T'HH:mm:sszzz",
+                CultureInfo.InvariantCulture
+            ).UtcDateTime
+        );
     }
 
 }

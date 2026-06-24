@@ -256,10 +256,24 @@ class _CSharpEmitter {
         '${indent}private static ${_csharpType(converter.to)} $methodName(${_csharpType(converter.from)} source)',
       );
       buffer.writeln('$indent{');
-      buffer.writeln('$indent    return (${converter.csharp.expression.trim()});');
+      _writeReturnExpression(buffer, indent: indent, expression: converter.csharp.expression);
       buffer.writeln('$indent}');
       buffer.writeln();
     }
+  }
+
+  void _writeReturnExpression(StringBuffer buffer, {required String indent, required String expression}) {
+    final trimmed = expression.trim();
+    if (!trimmed.contains('\n')) {
+      buffer.writeln('$indent    return ($trimmed);');
+      return;
+    }
+
+    buffer.writeln('$indent    return (');
+    for (final line in trimmed.split('\n')) {
+      buffer.writeln('$indent        ${line.trimRight()}');
+    }
+    buffer.writeln('$indent    );');
   }
 
   String _explicitFieldExpression(DataModelDef fromModel, FieldDef targetField, FieldMapping mapping) {

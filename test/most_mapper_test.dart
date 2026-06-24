@@ -81,6 +81,7 @@ void main() {
     expect(output, contains('MoneyToDecimal(source.Amount)'));
     expect(output, contains('OffsetDateTimeToString(source.Datetime)'));
     expect(output, contains('DateTimeOffset.ParseExact('));
+    expect(output, contains('return (\n            DateTimeOffset.ParseExact(\n                source,'));
     expect(output, contains('SomeField = null'));
   });
 
