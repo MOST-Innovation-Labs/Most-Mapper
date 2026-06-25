@@ -195,6 +195,26 @@ class ResolvedSchema {
     ];
   }
 
+  Set<ConverterDef> usedConverters() {
+    final used = <ConverterDef>{};
+    for (final model in dataModels) {
+      if (!model.json) {
+        continue;
+      }
+      for (final field in model.fields.values) {
+        used.addAll(jsonConvertersFor(field.type));
+      }
+    }
+    for (final mapping in schema.mappings) {
+      for (final assignment in mappingAssignments(mapping)) {
+        if (assignment case ResolvedSourceFieldAssignment(:final conversion)) {
+          used.addAll(conversion.usedConverters);
+        }
+      }
+    }
+    return used;
+  }
+
   Iterable<ConverterDef> jsonConvertersFor(TypeRef type) sync* {
     if (type.nullable) {
       yield* jsonConvertersFor(type.nonNullable);

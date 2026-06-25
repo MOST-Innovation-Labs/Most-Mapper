@@ -3,15 +3,15 @@
 
 import 'dart:math';
 
-class MostMapperConverters {
-  const MostMapperConverters._();
+class MappingConverters {
+  const MappingConverters._();
 
   static String dateTimeToString(DateTime source) {
     return (source.toUtc().toIso8601String());
   }
 
-  static double moneyToDecimal(Money source) {
-    return (source.value / pow(10, source.fractionalUnits));
+  static double measurementToDecimal(Measurement source) {
+    return (source.value / pow(10, source.scale));
   }
 
   static String offsetDateTimeToString(DateTime source) {
@@ -87,52 +87,50 @@ PaymentStatus paymentStatusFromInt(int value) {
   }
 }
 
-/// Monetary amount stored as minor units.
-class Money {
-  const Money({required this.code, required this.fractionalUnits, required this.value});
+/// Sample scaled numeric value.
+class Measurement {
+  const Measurement({required this.code, required this.scale, required this.value});
 
   final String code;
-  final int fractionalUnits;
+  final int scale;
   final int value;
 
-  Map<String, dynamic> toJson() => <String, dynamic>{'code': code, 'fractionalUnits': fractionalUnits, 'value': value};
+  Map<String, dynamic> toJson() => <String, dynamic>{'code': code, 'scale': scale, 'value': value};
 
-  factory Money.fromJson(Map<String, dynamic> json) =>
-      Money(code: json['code'] as String, fractionalUnits: json['fractionalUnits'] as int, value: json['value'] as int);
+  factory Measurement.fromJson(Map<String, dynamic> json) =>
+      Measurement(code: json['code'] as String, scale: json['scale'] as int, value: json['value'] as int);
 }
 
 /// Domain model.
 class ModelA {
   const ModelA({
     required this.jsonFieldName,
-    required this.amount,
+    required this.reading,
     required this.status,
     required this.bs,
     required this.createdAt,
   });
 
   final String? jsonFieldName;
-  final Money amount;
+  final Measurement reading;
   final PaymentStatus status;
   final List<ModelB> bs;
   final DateTime? createdAt;
 
   Map<String, dynamic> toJson() => <String, dynamic>{
     'JsonFieldName': jsonFieldName == null ? null : jsonFieldName!,
-    'amount': amount.toJson(),
+    'reading': reading.toJson(),
     'status': paymentStatusToString(status),
     'bs': bs.map((item) => item.toJson()).toList(),
-    'createdAt': createdAt == null ? null : MostMapperConverters.offsetDateTimeToString(createdAt!),
+    'createdAt': createdAt == null ? null : MappingConverters.offsetDateTimeToString(createdAt!),
   };
 
   factory ModelA.fromJson(Map<String, dynamic> json) => ModelA(
     jsonFieldName: json['JsonFieldName'] == null ? null : json['JsonFieldName'] as String,
-    amount: Money.fromJson(json['amount'] as Map<String, dynamic>),
+    reading: Measurement.fromJson(json['reading'] as Map<String, dynamic>),
     status: paymentStatusFromString(json['status'] as String),
     bs: (json['bs'] as List<dynamic>).map((item) => ModelB.fromJson(item as Map<String, dynamic>)).toList(),
-    createdAt: json['createdAt'] == null
-        ? null
-        : MostMapperConverters.offsetStringToDateTime(json['createdAt'] as String),
+    createdAt: json['createdAt'] == null ? null : MappingConverters.offsetStringToDateTime(json['createdAt'] as String),
   );
 }
 
@@ -140,7 +138,7 @@ class ModelA {
 class ModelAWire {
   const ModelAWire({
     required this.id,
-    required this.amount,
+    required this.reading,
     required this.status,
     required this.statusCode,
     required this.bs,
@@ -149,7 +147,7 @@ class ModelAWire {
   });
 
   final String? id;
-  final double amount;
+  final double reading;
   final String status;
   final int statusCode;
   final List<ModelBWire> bs;
@@ -158,7 +156,7 @@ class ModelAWire {
 
   Map<String, dynamic> toJson() => <String, dynamic>{
     'Id': id == null ? null : id!,
-    'amount': amount,
+    'reading': reading,
     'status': status,
     'statusCode': statusCode,
     'bs': bs.map((item) => item.toJson()).toList(),
@@ -168,7 +166,7 @@ class ModelAWire {
 
   factory ModelAWire.fromJson(Map<String, dynamic> json) => ModelAWire(
     id: json['Id'] == null ? null : json['Id'] as String,
-    amount: (json['amount'] as num).toDouble(),
+    reading: (json['reading'] as num).toDouble(),
     status: json['status'] as String,
     statusCode: json['statusCode'] as int,
     bs: (json['bs'] as List<dynamic>).map((item) => ModelBWire.fromJson(item as Map<String, dynamic>)).toList(),
@@ -186,13 +184,11 @@ class ModelB {
 
   Map<String, dynamic> toJson() => <String, dynamic>{
     'Id': id,
-    'Datetime': MostMapperConverters.offsetDateTimeToString(datetime),
+    'Datetime': MappingConverters.offsetDateTimeToString(datetime),
   };
 
-  factory ModelB.fromJson(Map<String, dynamic> json) => ModelB(
-    id: json['Id'] as String,
-    datetime: MostMapperConverters.offsetStringToDateTime(json['Datetime'] as String),
-  );
+  factory ModelB.fromJson(Map<String, dynamic> json) =>
+      ModelB(id: json['Id'] as String, datetime: MappingConverters.offsetStringToDateTime(json['Datetime'] as String));
 }
 
 /// Wire child model.
@@ -211,14 +207,14 @@ class ModelBWire {
 extension ModelBToModelBWire on ModelB {
   ModelBWire toModelBWire() {
     final source = this;
-    return ModelBWire(id: source.id, datetime: MostMapperConverters.offsetDateTimeToString(source.datetime));
+    return ModelBWire(id: source.id, datetime: MappingConverters.offsetDateTimeToString(source.datetime));
   }
 }
 
 extension ModelBWireToModelB on ModelBWire {
   ModelB toModelB() {
     final source = this;
-    return ModelB(id: source.id, datetime: MostMapperConverters.offsetStringToDateTime(source.datetime));
+    return ModelB(id: source.id, datetime: MappingConverters.offsetStringToDateTime(source.datetime));
   }
 }
 
@@ -227,11 +223,11 @@ extension ModelAToModelAWire on ModelA {
     final source = this;
     return ModelAWire(
       id: source.jsonFieldName,
-      amount: MostMapperConverters.moneyToDecimal(source.amount),
+      reading: MappingConverters.measurementToDecimal(source.reading),
       status: paymentStatusToString(source.status),
       statusCode: paymentStatusToInt(source.status),
       bs: source.bs.map((item) => item.toModelBWire()).toList(),
-      createdAt: source.createdAt == null ? null : MostMapperConverters.dateTimeToString(source.createdAt!),
+      createdAt: source.createdAt == null ? null : MappingConverters.dateTimeToString(source.createdAt!),
       someField: null,
     );
   }

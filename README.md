@@ -1,8 +1,8 @@
-# Most-Mapper
+# most_mapper
 
-Most-Mapper is a small Dart CLI package that generates Dart and C# mapping code from a single YAML file.
-The YAML file declares data models, enums, custom converter expressions, and typed mappings between models.
-Generated Dart files are formatted with `dart format`. Generated C# files are formatted with `dotnet format`.
+`most_mapper` is a Dart CLI package that generates Dart and C# mapping code from one YAML file.
+The mapping file declares data models, enums, converter expressions, and typed mappings between models.
+Generated Dart files are formatted with `dart format`; generated C# files are formatted with `dotnet format`.
 
 ## Usage
 
@@ -33,8 +33,8 @@ Defaults:
 
 | CLI option | Default |
 |---|---|
-| `--dart-file-name` | `most_mapper.g.dart` |
-| `--csharp-file-name` | `MostMapper.g.cs` |
+| `--dart-file-name` | `mapper.g.dart` |
+| `--csharp-file-name` | `Mapper.g.cs` |
 
 `--mapping` is required. At least one of `--dart-out-dir` or `--csharp-out-dir` must be present.
 C# generation requires the .NET SDK because the generated `.cs` file is passed through `dotnet format`.
@@ -46,7 +46,7 @@ C# generation requires the .NET SDK because the generated `.cs` file is passed t
 - Fields support `field: Type`, `field: Type?`, and `{ type: Type, nullable: true, doc: Description }`.
 - Enum models support string and int wire values.
 - Enums can map to and from `String` and `int` when every enum value declares that wire value.
-- `converters` define trusted raw Dart and C# expressions emitted as public helper methods.
+- `converters` define trusted Dart and C# expressions emitted as public helper methods.
 - Converter `name` is optional. Use a name only when a mapping must select a specific non-default converter.
 - Field mappings can use `{ from: SourceField, converter: converterName }` to force a named converter, or
   `{ from: SourceField, converter: default }` to force a built-in default converter when available.
@@ -83,8 +83,7 @@ C# generation requires the .NET SDK because the generated `.cs` file is passed t
 
 ## Converter Expressions
 
-Converters are raw code emitted into public helper methods in the generated file. Treat the mapping YAML as trusted
-input.
+Converters are emitted into public helper methods in the generated file. Treat the mapping YAML as trusted input.
 Converter names are optional. If multiple converters have the same `from` and `to` types, the last converter in the
 file is used by default; mappings can still reference any named converter explicitly. The name `default` is reserved.
 
@@ -147,12 +146,12 @@ represents the same instant in UTC.
 
 ```yaml
 models:
-  Money:
-    doc: Monetary amount stored as minor units.
+  Measurement:
+    doc: Sample scaled numeric value.
     json: true
     fields:
       code: String
-      fractionalUnits: int
+      scale: int
       value: int
 
   PaymentStatus:
@@ -166,7 +165,7 @@ models:
     json: true
     fields:
       JsonFieldName: { type: String, nullable: true }
-      amount: Money
+      reading: Measurement
       status: PaymentStatus
       bs: List<ModelB>
       createdAt: DateTime?
@@ -176,7 +175,7 @@ models:
     json: true
     fields:
       Id: String?
-      amount: decimal
+      reading: decimal
       status: String
       statusCode: int
       bs: List<ModelBWire>
@@ -198,14 +197,14 @@ models:
       Datetime: String
 
 converters:
-  - from: Money
+  - from: Measurement
     to: decimal
     dart:
       imports: ["dart:math"]
-      expression: "source.value / pow(10, source.fractionalUnits)"
+      expression: "source.value / pow(10, source.scale)"
     csharp:
       usings: ["System"]
-      expression: "(decimal)source.Value / (decimal)Math.Pow(10, source.FractionalUnits)"
+      expression: "(decimal)source.Value / (decimal)Math.Pow(10, source.Scale)"
 
   - name: offsetDateTimeToString
     from: DateTime
@@ -267,7 +266,7 @@ mappings:
     to: ModelAWire
     fields:
       Id: { from: JsonFieldName }
-      amount: { from: amount }
+      reading: { from: reading }
       status: { from: status }
       statusCode: { from: status }
       createdAt: { from: createdAt, converter: default }

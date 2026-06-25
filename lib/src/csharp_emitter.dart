@@ -16,7 +16,7 @@ class _CSharpEmitter {
   var _converterMethodNames = <ConverterDef, String>{};
 
   String emit() {
-    final converters = resolved.convertersToEmit(_usedConverters());
+    final converters = resolved.convertersToEmit(resolved.usedConverters());
     _converterMethodNames = csharpConverterMethodNames(converters);
     final body = _buildBody();
 
@@ -40,26 +40,6 @@ class _CSharpEmitter {
     return buffer.toString();
   }
 
-  Set<ConverterDef> _usedConverters() {
-    final converters = <ConverterDef>{};
-    for (final model in resolved.dataModels) {
-      if (!model.json) {
-        continue;
-      }
-      for (final field in model.fields.values) {
-        converters.addAll(resolved.jsonConvertersFor(field.type));
-      }
-    }
-    for (final mapping in resolved.schema.mappings) {
-      for (final assignment in resolved.mappingAssignments(mapping)) {
-        if (assignment case ResolvedSourceFieldAssignment(:final conversion)) {
-          converters.addAll(conversion.usedConverters);
-        }
-      }
-    }
-    return converters;
-  }
-
   StringBuffer _buildBody() {
     final body = StringBuffer();
     if (resolved.dataModels.any((model) => model.json)) {
@@ -78,7 +58,7 @@ class _CSharpEmitter {
   }
 
   void _writeJsonHelper(StringBuffer buffer) {
-    buffer.writeln('internal static class MostMapperJson');
+    buffer.writeln('internal static class MappingJson');
     buffer.writeln('{');
     buffer.writeln('    public static JsonElement? Optional(JsonElement json, string name)');
     buffer.writeln('    {');
@@ -95,7 +75,7 @@ class _CSharpEmitter {
     if (converters.isEmpty) {
       return;
     }
-    buffer.writeln('public static class MostMapperConverters');
+    buffer.writeln('public static class MappingConverters');
     buffer.writeln('{');
     for (final converter in converters) {
       final methodName = _converterMethodNames[converter] ?? csharpConverterBaseMethodName(converter);
@@ -232,7 +212,7 @@ class _CSharpEmitter {
   }
 
   void _writeMappings(StringBuffer buffer) {
-    buffer.writeln('public static class MostMapperMappings');
+    buffer.writeln('public static class MappingExtensions');
     buffer.writeln('{');
     for (final mapping in resolved.schema.mappings) {
       buffer.writeln('    public static ${csharpTypeName(mapping.to)} ${_mappingMethodName(mapping.to)}(');
@@ -328,7 +308,7 @@ class _CSharpEmitter {
     final key = csharpStringLiteral(field.name);
     if (field.type.nullable) {
       final localName = '${lowerFirst(csharpPropertyName(field.name))}Json';
-      return 'MostMapperJson.Optional(json, $key) is JsonElement $localName '
+      return 'MappingJson.Optional(json, $key) is JsonElement $localName '
           '? ${_fromJsonExpression(field.type.nonNullable, localName)} : null';
     }
     return _fromJsonExpression(field.type, 'json.GetProperty($key)');
@@ -432,7 +412,7 @@ class _CSharpEmitter {
 
   String _converterCall(ConverterDef converter, String sourceExpression) {
     final methodName = _converterMethodNames[converter] ?? csharpConverterBaseMethodName(converter);
-    return 'MostMapperConverters.$methodName($sourceExpression)';
+    return 'MappingConverters.$methodName($sourceExpression)';
   }
 
   String _enumScalarExpression(String enumName, EnumScalarKind kind, bool fromEnum, String sourceExpression) {

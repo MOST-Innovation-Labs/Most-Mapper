@@ -7,16 +7,16 @@ using System.Globalization;
 using System.Linq;
 using System.Text.Json;
 
-public static class MostMapperConverters
+public static class MappingConverters
 {
     public static string DateTimeToString(System.DateTime source)
     {
         return (source.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture));
     }
 
-    public static decimal MoneyToDecimal(Money source)
+    public static decimal MeasurementToDecimal(Measurement source)
     {
-        return ((decimal)source.Value / (decimal)Math.Pow(10, source.FractionalUnits));
+        return ((decimal)source.Value / (decimal)Math.Pow(10, source.Scale));
     }
 
     public static string OffsetDateTimeToString(System.DateTime source)
@@ -37,7 +37,7 @@ public static class MostMapperConverters
 
 }
 
-internal static class MostMapperJson
+internal static class MappingJson
 {
     public static JsonElement? Optional(JsonElement json, string name)
     {
@@ -88,12 +88,12 @@ public static class PaymentStatusConversions
 }
 
 /// <summary>
-/// Monetary amount stored as minor units.
+/// Sample scaled numeric value.
 /// </summary>
-public class Money
+public class Measurement
 {
     public string Code { get; set; } = "";
-    public int FractionalUnits { get; set; }
+    public int Scale { get; set; }
     public int Value { get; set; }
 
     public Dictionary<string, object?> ToJsonMap()
@@ -101,25 +101,25 @@ public class Money
         return new Dictionary<string, object?>
         {
             ["code"] = Code,
-            ["fractionalUnits"] = FractionalUnits,
+            ["scale"] = Scale,
             ["value"] = Value,
         };
     }
 
     public string ToJson() => JsonSerializer.Serialize(ToJsonMap());
 
-    public static Money FromJson(string json)
+    public static Measurement FromJson(string json)
     {
         using var document = JsonDocument.Parse(json);
         return FromJsonElement(document.RootElement);
     }
 
-    public static Money FromJsonElement(JsonElement json)
+    public static Measurement FromJsonElement(JsonElement json)
     {
-        return new Money
+        return new Measurement
         {
             Code = json.GetProperty("code").GetString()!,
-            FractionalUnits = json.GetProperty("fractionalUnits").GetInt32(),
+            Scale = json.GetProperty("scale").GetInt32(),
             Value = json.GetProperty("value").GetInt32(),
         };
     }
@@ -131,7 +131,7 @@ public class Money
 public class ModelA
 {
     public string? JsonFieldName { get; set; }
-    public Money Amount { get; set; } = default!;
+    public Measurement Reading { get; set; } = default!;
     public PaymentStatus Status { get; set; }
     public List<ModelB> Bs { get; set; } = new List<ModelB>();
     public System.DateTime? CreatedAt { get; set; }
@@ -141,10 +141,10 @@ public class ModelA
         return new Dictionary<string, object?>
         {
             ["JsonFieldName"] = JsonFieldName == null ? null : JsonFieldName,
-            ["amount"] = Amount.ToJsonMap(),
+            ["reading"] = Reading.ToJsonMap(),
             ["status"] = PaymentStatusConversions.ToStringValue(Status),
             ["bs"] = Bs.Select(item => item.ToJsonMap()).ToList(),
-            ["createdAt"] = CreatedAt == null ? null : MostMapperConverters.OffsetDateTimeToString(CreatedAt.Value),
+            ["createdAt"] = CreatedAt == null ? null : MappingConverters.OffsetDateTimeToString(CreatedAt.Value),
         };
     }
 
@@ -160,11 +160,11 @@ public class ModelA
     {
         return new ModelA
         {
-            JsonFieldName = MostMapperJson.Optional(json, "JsonFieldName") is JsonElement jsonFieldNameJson ? jsonFieldNameJson.GetString()! : null,
-            Amount = Money.FromJsonElement(json.GetProperty("amount")),
+            JsonFieldName = MappingJson.Optional(json, "JsonFieldName") is JsonElement jsonFieldNameJson ? jsonFieldNameJson.GetString()! : null,
+            Reading = Measurement.FromJsonElement(json.GetProperty("reading")),
             Status = PaymentStatusConversions.FromStringValue(json.GetProperty("status").GetString()!),
             Bs = json.GetProperty("bs").EnumerateArray().Select(item => ModelB.FromJsonElement(item)).ToList(),
-            CreatedAt = MostMapperJson.Optional(json, "createdAt") is JsonElement createdAtJson ? MostMapperConverters.OffsetStringToDateTime(createdAtJson.GetString()!) : null,
+            CreatedAt = MappingJson.Optional(json, "createdAt") is JsonElement createdAtJson ? MappingConverters.OffsetStringToDateTime(createdAtJson.GetString()!) : null,
         };
     }
 }
@@ -175,7 +175,7 @@ public class ModelA
 public class ModelAWire
 {
     public string? Id { get; set; }
-    public decimal Amount { get; set; }
+    public decimal Reading { get; set; }
     public string Status { get; set; } = "";
     public int StatusCode { get; set; }
     public List<ModelBWire> Bs { get; set; } = new List<ModelBWire>();
@@ -187,7 +187,7 @@ public class ModelAWire
         return new Dictionary<string, object?>
         {
             ["Id"] = Id == null ? null : Id,
-            ["amount"] = Amount,
+            ["reading"] = Reading,
             ["status"] = Status,
             ["statusCode"] = StatusCode,
             ["bs"] = Bs.Select(item => item.ToJsonMap()).ToList(),
@@ -208,13 +208,13 @@ public class ModelAWire
     {
         return new ModelAWire
         {
-            Id = MostMapperJson.Optional(json, "Id") is JsonElement idJson ? idJson.GetString()! : null,
-            Amount = json.GetProperty("amount").GetDecimal(),
+            Id = MappingJson.Optional(json, "Id") is JsonElement idJson ? idJson.GetString()! : null,
+            Reading = json.GetProperty("reading").GetDecimal(),
             Status = json.GetProperty("status").GetString()!,
             StatusCode = json.GetProperty("statusCode").GetInt32(),
             Bs = json.GetProperty("bs").EnumerateArray().Select(item => ModelBWire.FromJsonElement(item)).ToList(),
-            CreatedAt = MostMapperJson.Optional(json, "createdAt") is JsonElement createdAtJson ? createdAtJson.GetString()! : null,
-            SomeField = MostMapperJson.Optional(json, "SomeField") is JsonElement someFieldJson ? someFieldJson.GetString()! : null,
+            CreatedAt = MappingJson.Optional(json, "createdAt") is JsonElement createdAtJson ? createdAtJson.GetString()! : null,
+            SomeField = MappingJson.Optional(json, "SomeField") is JsonElement someFieldJson ? someFieldJson.GetString()! : null,
         };
     }
 }
@@ -232,7 +232,7 @@ public class ModelB
         return new Dictionary<string, object?>
         {
             ["Id"] = Id,
-            ["Datetime"] = MostMapperConverters.OffsetDateTimeToString(Datetime),
+            ["Datetime"] = MappingConverters.OffsetDateTimeToString(Datetime),
         };
     }
 
@@ -249,7 +249,7 @@ public class ModelB
         return new ModelB
         {
             Id = json.GetProperty("Id").GetString()!,
-            Datetime = MostMapperConverters.OffsetStringToDateTime(json.GetProperty("Datetime").GetString()!),
+            Datetime = MappingConverters.OffsetStringToDateTime(json.GetProperty("Datetime").GetString()!),
         };
     }
 }
@@ -289,7 +289,7 @@ public class ModelBWire
     }
 }
 
-public static class MostMapperMappings
+public static class MappingExtensions
 {
     public static ModelBWire ToModelBWire(
         this ModelB source)
@@ -297,7 +297,7 @@ public static class MostMapperMappings
         return new ModelBWire
         {
             Id = source.Id,
-            Datetime = MostMapperConverters.OffsetDateTimeToString(source.Datetime),
+            Datetime = MappingConverters.OffsetDateTimeToString(source.Datetime),
         };
     }
 
@@ -307,7 +307,7 @@ public static class MostMapperMappings
         return new ModelB
         {
             Id = source.Id,
-            Datetime = MostMapperConverters.OffsetStringToDateTime(source.Datetime),
+            Datetime = MappingConverters.OffsetStringToDateTime(source.Datetime),
         };
     }
 
@@ -317,11 +317,11 @@ public static class MostMapperMappings
         return new ModelAWire
         {
             Id = source.JsonFieldName,
-            Amount = MostMapperConverters.MoneyToDecimal(source.Amount),
+            Reading = MappingConverters.MeasurementToDecimal(source.Reading),
             Status = PaymentStatusConversions.ToStringValue(source.Status),
             StatusCode = PaymentStatusConversions.ToIntValue(source.Status),
             Bs = source.Bs.Select(item => item.ToModelBWire()).ToList(),
-            CreatedAt = source.CreatedAt == null ? null : MostMapperConverters.DateTimeToString(source.CreatedAt.Value),
+            CreatedAt = source.CreatedAt == null ? null : MappingConverters.DateTimeToString(source.CreatedAt.Value),
             SomeField = null,
         };
     }

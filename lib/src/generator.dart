@@ -6,8 +6,8 @@ import 'parser.dart';
 import 'resolver.dart';
 import 'schema.dart';
 
-const defaultDartFileName = 'most_mapper.g.dart';
-const defaultCSharpFileName = 'MostMapper.g.cs';
+const defaultDartFileName = 'mapper.g.dart';
+const defaultCSharpFileName = 'Mapper.g.cs';
 
 class GeneratorOptions {
   GeneratorOptions({
@@ -120,7 +120,7 @@ class _OutputFile {
 void _formatCSharp(String path) {
   final tempDir = Directory.systemTemp.createTempSync('most_mapper_dotnet_format_');
   try {
-    final project = File('${tempDir.path}/MostMapperFormat.csproj');
+    final project = File('${tempDir.path}/MapperFormat.csproj');
     project.writeAsStringSync('''
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
@@ -151,7 +151,7 @@ void _formatCSharp(String path) {
 void _validateCSharp(String path) {
   final tempDir = Directory.systemTemp.createTempSync('most_mapper_dotnet_validate_');
   try {
-    final project = File('${tempDir.path}/MostMapperValidate.csproj');
+    final project = File('${tempDir.path}/MapperValidate.csproj');
     project.writeAsStringSync('''
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>

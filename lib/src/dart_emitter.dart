@@ -16,7 +16,7 @@ class _DartEmitter {
   var _converterMethodNames = <ConverterDef, String>{};
 
   String emit() {
-    final converters = resolved.convertersToEmit(_usedConverters());
+    final converters = resolved.convertersToEmit(resolved.usedConverters());
     _converterMethodNames = dartConverterMethodNames(converters);
     final body = _buildBody();
 
@@ -42,26 +42,6 @@ class _DartEmitter {
     return buffer.toString();
   }
 
-  Set<ConverterDef> _usedConverters() {
-    final converters = <ConverterDef>{};
-    for (final model in resolved.dataModels) {
-      if (!model.json) {
-        continue;
-      }
-      for (final field in model.fields.values) {
-        converters.addAll(resolved.jsonConvertersFor(field.type));
-      }
-    }
-    for (final mapping in resolved.schema.mappings) {
-      for (final assignment in resolved.mappingAssignments(mapping)) {
-        if (assignment case ResolvedSourceFieldAssignment(:final conversion)) {
-          converters.addAll(conversion.usedConverters);
-        }
-      }
-    }
-    return converters;
-  }
-
   StringBuffer _buildBody() {
     final body = StringBuffer();
     for (final enumDef in resolved.enumModels) {
@@ -80,8 +60,8 @@ class _DartEmitter {
     if (converters.isEmpty) {
       return;
     }
-    buffer.writeln('class MostMapperConverters {');
-    buffer.writeln('  const MostMapperConverters._();');
+    buffer.writeln('class MappingConverters {');
+    buffer.writeln('  const MappingConverters._();');
     buffer.writeln();
     for (final converter in converters) {
       final methodName = _converterMethodNames[converter] ?? dartConverterBaseMethodName(converter);
@@ -338,7 +318,7 @@ class _DartEmitter {
 
   String _converterCall(ConverterDef converter, String sourceExpression) {
     final methodName = _converterMethodNames[converter] ?? dartConverterBaseMethodName(converter);
-    return 'MostMapperConverters.$methodName($sourceExpression)';
+    return 'MappingConverters.$methodName($sourceExpression)';
   }
 
   String _enumScalarExpression(String enumName, EnumScalarKind kind, bool fromEnum, String sourceExpression) {

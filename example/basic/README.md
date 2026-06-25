@@ -1,4 +1,4 @@
-# Most-Mapper Basic Example
+# most_mapper Basic Example
 
 Generate Dart and C# outputs from the example mapping:
 
