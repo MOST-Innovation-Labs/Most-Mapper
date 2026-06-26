@@ -225,9 +225,12 @@ class _DartEmitter {
 
   String _assignmentExpression(ResolvedFieldAssignment assignment) {
     return switch (assignment) {
-      ResolvedConstantFieldAssignment(:final constValue) => _dartConstant(
-        constValue,
-      ),
+      ResolvedConstantFieldAssignment(:final constValue, :final targetField) =>
+        constValue is int &&
+                (targetField.type.nonNullable.name == 'double' ||
+                    targetField.type.nonNullable.name == 'decimal')
+            ? '(${constValue}).toDouble()'
+            : _dartConstant(constValue),
       ResolvedSourceFieldAssignment(:final sourceField, :final conversion) =>
         _convertExpression(
           conversion,
