@@ -164,7 +164,7 @@ models:
       scale: int
       value: int
 
-  PaymentStatus:
+  OrderStatus:
     enum:
       pending: { string: pending, int: 0 }
       captured: { string: captured, int: 1 }
@@ -176,7 +176,7 @@ models:
     fields:
       JsonFieldName: { type: String, nullable: true }
       reading: Measurement
-      status: PaymentStatus
+      status: OrderStatus
       bs: List<ModelB>
       createdAt: DateTime?
 

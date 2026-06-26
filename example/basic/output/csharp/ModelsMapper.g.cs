@@ -45,45 +45,45 @@ internal static class MappingJson
     }
 }
 
-public enum PaymentStatus
+public enum OrderStatus
 {
     Pending,
     Captured,
     Failed,
 }
 
-public static class PaymentStatusConversions
+public static class OrderStatusConversions
 {
-    public static string ToStringValue(PaymentStatus value) => value switch
+    public static string ToStringValue(OrderStatus value) => value switch
     {
-        PaymentStatus.Pending => "pending",
-        PaymentStatus.Captured => "captured",
-        PaymentStatus.Failed => "failed",
+        OrderStatus.Pending => "pending",
+        OrderStatus.Captured => "captured",
+        OrderStatus.Failed => "failed",
         _ => throw new ArgumentOutOfRangeException(nameof(value)),
     };
 
-    public static PaymentStatus FromStringValue(string value) => value switch
+    public static OrderStatus FromStringValue(string value) => value switch
     {
-        "pending" => PaymentStatus.Pending,
-        "captured" => PaymentStatus.Captured,
-        "failed" => PaymentStatus.Failed,
-        _ => throw new ArgumentOutOfRangeException(nameof(value), value, "Unknown PaymentStatus string"),
+        "pending" => OrderStatus.Pending,
+        "captured" => OrderStatus.Captured,
+        "failed" => OrderStatus.Failed,
+        _ => throw new ArgumentOutOfRangeException(nameof(value), value, "Unknown OrderStatus string"),
     };
 
-    public static int ToIntValue(PaymentStatus value) => value switch
+    public static int ToIntValue(OrderStatus value) => value switch
     {
-        PaymentStatus.Pending => 0,
-        PaymentStatus.Captured => 1,
-        PaymentStatus.Failed => 2,
+        OrderStatus.Pending => 0,
+        OrderStatus.Captured => 1,
+        OrderStatus.Failed => 2,
         _ => throw new ArgumentOutOfRangeException(nameof(value)),
     };
 
-    public static PaymentStatus FromIntValue(int value) => value switch
+    public static OrderStatus FromIntValue(int value) => value switch
     {
-        0 => PaymentStatus.Pending,
-        1 => PaymentStatus.Captured,
-        2 => PaymentStatus.Failed,
-        _ => throw new ArgumentOutOfRangeException(nameof(value), value, "Unknown PaymentStatus int"),
+        0 => OrderStatus.Pending,
+        1 => OrderStatus.Captured,
+        2 => OrderStatus.Failed,
+        _ => throw new ArgumentOutOfRangeException(nameof(value), value, "Unknown OrderStatus int"),
     };
 }
 
@@ -132,7 +132,7 @@ public class ModelA
 {
     public string? JsonFieldName { get; set; }
     public Measurement Reading { get; set; } = default!;
-    public PaymentStatus Status { get; set; }
+    public OrderStatus Status { get; set; }
     public List<ModelB> Bs { get; set; } = new List<ModelB>();
     public System.DateTime? CreatedAt { get; set; }
 
@@ -142,7 +142,7 @@ public class ModelA
         {
             ["JsonFieldName"] = JsonFieldName == null ? null : JsonFieldName,
             ["reading"] = Reading.ToJsonMap(),
-            ["status"] = PaymentStatusConversions.ToStringValue(Status),
+            ["status"] = OrderStatusConversions.ToStringValue(Status),
             ["bs"] = Bs.Select(item => item.ToJsonMap()).ToList(),
             ["createdAt"] = CreatedAt == null ? null : MappingConverters.OffsetDateTimeToString(CreatedAt.Value),
         };
@@ -162,7 +162,7 @@ public class ModelA
         {
             JsonFieldName = MappingJson.Optional(json, "JsonFieldName") is JsonElement jsonFieldNameJson ? jsonFieldNameJson.GetString()! : null,
             Reading = Measurement.FromJsonElement(json.GetProperty("reading")),
-            Status = PaymentStatusConversions.FromStringValue(json.GetProperty("status").GetString()!),
+            Status = OrderStatusConversions.FromStringValue(json.GetProperty("status").GetString()!),
             Bs = json.GetProperty("bs").EnumerateArray().Select(item => ModelB.FromJsonElement(item)).ToList(),
             CreatedAt = MappingJson.Optional(json, "createdAt") is JsonElement createdAtJson ? MappingConverters.OffsetStringToDateTime(createdAtJson.GetString()!) : null,
         };
@@ -318,8 +318,8 @@ public static class MappingExtensions
         {
             Id = source.JsonFieldName,
             Reading = MappingConverters.MeasurementToDecimal(source.Reading),
-            Status = PaymentStatusConversions.ToStringValue(source.Status),
-            StatusCode = PaymentStatusConversions.ToIntValue(source.Status),
+            Status = OrderStatusConversions.ToStringValue(source.Status),
+            StatusCode = OrderStatusConversions.ToIntValue(source.Status),
             Bs = source.Bs.Select(item => item.ToModelBWire()).ToList(),
             CreatedAt = source.CreatedAt == null ? null : MappingConverters.DateTimeToString(source.CreatedAt.Value),
             SomeField = null,

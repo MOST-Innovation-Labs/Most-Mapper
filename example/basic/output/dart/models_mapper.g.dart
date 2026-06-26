@@ -44,53 +44,53 @@ class MappingConverters {
   }
 }
 
-enum PaymentStatus { pending, captured, failed }
+enum OrderStatus { pending, captured, failed }
 
-String paymentStatusToString(PaymentStatus value) {
+String orderStatusToString(OrderStatus value) {
   switch (value) {
-    case PaymentStatus.pending:
+    case OrderStatus.pending:
       return 'pending';
-    case PaymentStatus.captured:
+    case OrderStatus.captured:
       return 'captured';
-    case PaymentStatus.failed:
+    case OrderStatus.failed:
       return 'failed';
   }
 }
 
-PaymentStatus paymentStatusFromString(String value) {
+OrderStatus orderStatusFromString(String value) {
   switch (value) {
     case 'pending':
-      return PaymentStatus.pending;
+      return OrderStatus.pending;
     case 'captured':
-      return PaymentStatus.captured;
+      return OrderStatus.captured;
     case 'failed':
-      return PaymentStatus.failed;
+      return OrderStatus.failed;
     default:
-      throw ArgumentError.value(value, 'value', 'Unknown PaymentStatus string');
+      throw ArgumentError.value(value, 'value', 'Unknown OrderStatus string');
   }
 }
 
-int paymentStatusToInt(PaymentStatus value) {
+int orderStatusToInt(OrderStatus value) {
   switch (value) {
-    case PaymentStatus.pending:
+    case OrderStatus.pending:
       return 0;
-    case PaymentStatus.captured:
+    case OrderStatus.captured:
       return 1;
-    case PaymentStatus.failed:
+    case OrderStatus.failed:
       return 2;
   }
 }
 
-PaymentStatus paymentStatusFromInt(int value) {
+OrderStatus orderStatusFromInt(int value) {
   switch (value) {
     case 0:
-      return PaymentStatus.pending;
+      return OrderStatus.pending;
     case 1:
-      return PaymentStatus.captured;
+      return OrderStatus.captured;
     case 2:
-      return PaymentStatus.failed;
+      return OrderStatus.failed;
     default:
-      throw ArgumentError.value(value, 'value', 'Unknown PaymentStatus int');
+      throw ArgumentError.value(value, 'value', 'Unknown OrderStatus int');
   }
 }
 
@@ -131,14 +131,14 @@ class ModelA {
 
   final String? jsonFieldName;
   final Measurement reading;
-  final PaymentStatus status;
+  final OrderStatus status;
   final List<ModelB> bs;
   final DateTime? createdAt;
 
   Map<String, dynamic> toJson() => <String, dynamic>{
     'JsonFieldName': jsonFieldName == null ? null : jsonFieldName!,
     'reading': reading.toJson(),
-    'status': paymentStatusToString(status),
+    'status': orderStatusToString(status),
     'bs': bs.map((item) => item.toJson()).toList(),
     'createdAt': createdAt == null
         ? null
@@ -150,7 +150,7 @@ class ModelA {
         ? null
         : json['JsonFieldName'] as String,
     reading: Measurement.fromJson(json['reading'] as Map<String, dynamic>),
-    status: paymentStatusFromString(json['status'] as String),
+    status: orderStatusFromString(json['status'] as String),
     bs: (json['bs'] as List<dynamic>)
         .map((item) => ModelB.fromJson(item as Map<String, dynamic>))
         .toList(),
@@ -267,8 +267,8 @@ extension ModelAToModelAWire on ModelA {
     return ModelAWire(
       id: source.jsonFieldName,
       reading: MappingConverters.measurementToDecimal(source.reading),
-      status: paymentStatusToString(source.status),
-      statusCode: paymentStatusToInt(source.status),
+      status: orderStatusToString(source.status),
+      statusCode: orderStatusToInt(source.status),
       bs: source.bs.map((item) => item.toModelBWire()).toList(),
       createdAt: source.createdAt == null
           ? null

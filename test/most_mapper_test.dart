@@ -13,13 +13,13 @@ void main() {
     () {
       final schema = parseMappingYaml(_sampleYaml);
       final modelA = schema.models['ModelA']! as DataModelDef;
-      final paymentStatus = schema.models['PaymentStatus']! as EnumModelDef;
+      final orderStatus = schema.models['OrderStatus']! as EnumModelDef;
 
       expect(modelA.json, isTrue);
       expect(modelA.fields['createdAt']!.type.nullable, isTrue);
       expect(modelA.fields['bs']!.type.item!.name, 'ModelB');
-      expect(paymentStatus.values['captured']!.stringValue, 'captured');
-      expect(paymentStatus.values['captured']!.intValue, 1);
+      expect(orderStatus.values['captured']!.stringValue, 'captured');
+      expect(orderStatus.values['captured']!.intValue, 1);
       expect(schema.converters[0].name, isNull);
       expect(schema.converters[1].dart.expression, contains('\n'));
       expect(
@@ -36,19 +36,19 @@ void main() {
       final resolved = _resolvedSample();
 
       expect(
-        resolved.canConvert(parseType('PaymentStatus'), parseType('String')),
+        resolved.canConvert(parseType('OrderStatus'), parseType('String')),
         isTrue,
       );
       expect(
-        resolved.canConvert(parseType('PaymentStatus'), parseType('int')),
+        resolved.canConvert(parseType('OrderStatus'), parseType('int')),
         isTrue,
       );
       expect(
-        resolved.canConvert(parseType('String'), parseType('PaymentStatus')),
+        resolved.canConvert(parseType('String'), parseType('OrderStatus')),
         isTrue,
       );
       expect(
-        resolved.canConvert(parseType('int'), parseType('PaymentStatus')),
+        resolved.canConvert(parseType('int'), parseType('OrderStatus')),
         isTrue,
       );
       expect(
@@ -74,10 +74,10 @@ void main() {
     () {
       final output = emitDart(_resolvedSample());
 
-      expect(output, contains('enum PaymentStatus'));
+      expect(output, contains('enum OrderStatus'));
       expect(output, contains('Map<String, dynamic> toJson()'));
-      expect(output, contains('paymentStatusToString(source.status)'));
-      expect(output, contains('paymentStatusToInt(source.status)'));
+      expect(output, contains('orderStatusToString(source.status)'));
+      expect(output, contains('orderStatusToInt(source.status)'));
       expect(output, isNot(contains('_mappingDateTimeToJson')));
       expect(output, isNot(contains('_mappingDateTimeFromJson')));
       expect(
@@ -143,18 +143,18 @@ void main() {
     () {
       final output = emitCSharp(_resolvedSample());
 
-      expect(output, contains('public enum PaymentStatus'));
+      expect(output, contains('public enum OrderStatus'));
       expect(
         output,
         contains('public Dictionary<string, object?> ToJsonMap()'),
       );
       expect(
         output,
-        contains('PaymentStatusConversions.ToStringValue(source.Status)'),
+        contains('OrderStatusConversions.ToStringValue(source.Status)'),
       );
       expect(
         output,
-        contains('PaymentStatusConversions.ToIntValue(source.Status)'),
+        contains('OrderStatusConversions.ToIntValue(source.Status)'),
       );
       expect(output, isNot(contains('MappingJson.DateTimeToJson')));
       expect(output, isNot(contains('MappingJson.DateTimeFromJson')));
@@ -478,7 +478,7 @@ models:
       scale: int
       value: int
 
-  PaymentStatus:
+  OrderStatus:
     enum:
       pending: { string: pending, int: 0 }
       captured: { string: captured, int: 1 }
@@ -490,7 +490,7 @@ models:
     fields:
       JsonFieldName: { type: String, nullable: true }
       reading: Measurement
-      status: PaymentStatus
+      status: OrderStatus
       bs: List<ModelB>
       createdAt: DateTime?
 
