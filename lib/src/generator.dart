@@ -6,10 +6,15 @@ import 'parser.dart';
 import 'resolver.dart';
 import 'schema.dart';
 
+/// Default generated Dart mapper file name.
 const defaultDartFileName = 'mapper.g.dart';
+
+/// Default generated C# mapper file name.
 const defaultCSharpFileName = 'Mapper.g.cs';
 
+/// File-system options used by [generate].
 class GeneratorOptions {
+  /// Creates generator options for one mapping run.
   GeneratorOptions({
     required this.mappingPath,
     required this.dartOutDir,
@@ -18,44 +23,76 @@ class GeneratorOptions {
     required this.csharpFileName,
   });
 
+  /// Path to the YAML mapping file.
   final String mappingPath;
+
+  /// Output directory for generated Dart code, or `null` to skip Dart output.
   final String? dartOutDir;
+
+  /// Generated Dart file name.
   final String dartFileName;
+
+  /// Output directory for generated C# code, or `null` to skip C# output.
   final String? csharpOutDir;
+
+  /// Generated C# file name.
   final String csharpFileName;
 }
 
+/// Result of a completed generation run.
 class GenerationResult {
+  /// Creates a result from written output paths.
   GenerationResult(this.writtenFiles);
 
+  /// Paths written by the generator.
   final List<String> writtenFiles;
 }
 
+/// Generates mapper files from the YAML mapping described by [options].
 GenerationResult generate(GeneratorOptions options) {
   _validateOptions(options);
 
   final mappingFile = File(options.mappingPath);
   if (!mappingFile.existsSync()) {
-    throw MapperException('Mapping file does not exist: ${options.mappingPath}');
+    throw MapperException(
+      'Mapping file does not exist: ${options.mappingPath}',
+    );
   }
 
-  final schema = parseMappingYaml(mappingFile.readAsStringSync(), sourceName: options.mappingPath);
+  final schema = parseMappingYaml(
+    mappingFile.readAsStringSync(),
+    sourceName: options.mappingPath,
+  );
   final resolved = ResolvedSchema(schema);
   resolved.validate();
 
   final outputs = <_OutputFile>[];
   if (options.dartOutDir != null) {
-    outputs.add(_OutputFile(options.dartOutDir!, options.dartFileName, emitDart(resolved)));
+    outputs.add(
+      _OutputFile(
+        options.dartOutDir!,
+        options.dartFileName,
+        emitDart(resolved),
+      ),
+    );
   }
   if (options.csharpOutDir != null) {
-    outputs.add(_OutputFile(options.csharpOutDir!, options.csharpFileName, emitCSharp(resolved)));
+    outputs.add(
+      _OutputFile(
+        options.csharpOutDir!,
+        options.csharpFileName,
+        emitCSharp(resolved),
+      ),
+    );
   }
 
   final paths = <String>{};
   for (final output in outputs) {
     final path = output.path;
     if (!paths.add(path)) {
-      throw MapperException('Dart and C# outputs resolve to the same file: $path');
+      throw MapperException(
+        'Dart and C# outputs resolve to the same file: $path',
+      );
     }
   }
 
@@ -75,14 +112,18 @@ void _validateOptions(GeneratorOptions options) {
     throw MapperException('--mapping is required.');
   }
   if (options.dartOutDir == null && options.csharpOutDir == null) {
-    throw MapperException('At least one of --dart-out-dir or --csharp-out-dir is required.');
+    throw MapperException(
+      'At least one of --dart-out-dir or --csharp-out-dir is required.',
+    );
   }
   _validateFileName(options.dartFileName, '--dart-file-name');
   _validateFileName(options.csharpFileName, '--csharp-file-name');
 }
 
 void _validateFileName(String fileName, String optionName) {
-  if (fileName.trim().isEmpty || fileName.contains('/') || fileName.contains(r'\')) {
+  if (fileName.trim().isEmpty ||
+      fileName.contains('/') ||
+      fileName.contains(r'\')) {
     throw MapperException('$optionName must be a file name, not a path.');
   }
 }
@@ -94,7 +135,8 @@ class _OutputFile {
   final String fileName;
   final String contents;
 
-  String get path => '${directory.endsWith('/') ? directory.substring(0, directory.length - 1) : directory}/$fileName';
+  String get path =>
+      '${directory.endsWith('/') ? directory.substring(0, directory.length - 1) : directory}/$fileName';
 
   void format() {
     if (fileName.endsWith('.dart')) {
@@ -118,7 +160,9 @@ class _OutputFile {
 }
 
 void _formatCSharp(String path) {
-  final tempDir = Directory.systemTemp.createTempSync('most_mapper_dotnet_format_');
+  final tempDir = Directory.systemTemp.createTempSync(
+    'most_mapper_dotnet_format_',
+  );
   try {
     final project = File('${tempDir.path}/MapperFormat.csproj');
     project.writeAsStringSync('''
@@ -149,7 +193,9 @@ void _formatCSharp(String path) {
 }
 
 void _validateCSharp(String path) {
-  final tempDir = Directory.systemTemp.createTempSync('most_mapper_dotnet_validate_');
+  final tempDir = Directory.systemTemp.createTempSync(
+    'most_mapper_dotnet_validate_',
+  );
   try {
     final project = File('${tempDir.path}/MapperValidate.csproj');
     project.writeAsStringSync('''
@@ -186,8 +232,13 @@ void _runCommand(String executable, List<String> arguments, String action) {
     return;
   }
 
-  final output = [result.stdout, result.stderr].where((value) => value.toString().trim().isNotEmpty).join('\n');
-  throw MapperException('$executable $action failed with exit code ${result.exitCode}.\n$output');
+  final output = [
+    result.stdout,
+    result.stderr,
+  ].where((value) => value.toString().trim().isNotEmpty).join('\n');
+  throw MapperException(
+    '$executable $action failed with exit code ${result.exitCode}.\n$output',
+  );
 }
 
 String _xmlEscape(String value) {

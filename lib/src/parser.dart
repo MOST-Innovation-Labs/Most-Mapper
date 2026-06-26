@@ -3,7 +3,11 @@ import 'package:yaml/yaml.dart';
 import 'schema.dart';
 import 'type_parser.dart';
 
-MapperSchema parseMappingYaml(String source, {String sourceName = 'mapping.yaml'}) {
+/// Parses a YAML mapping document into a [MapperSchema].
+MapperSchema parseMappingYaml(
+  String source, {
+  String sourceName = 'mapping.yaml',
+}) {
   final document = loadYaml(source);
   if (document is! YamlMap) {
     throw MapperException('$sourceName must contain a YAML map.');
@@ -28,7 +32,11 @@ Map<String, ModelDef> _parseModels(Object? value, String sourceName) {
     final doc = _optionalString(body['doc'], 'models.$name.doc');
 
     if (body.containsKey('enum')) {
-      models[name] = EnumModelDef(name: name, doc: doc, values: _parseEnumValues(body['enum'], name));
+      models[name] = EnumModelDef(
+        name: name,
+        doc: doc,
+        values: _parseEnumValues(body['enum'], name),
+      );
       continue;
     }
 
@@ -53,7 +61,10 @@ Map<String, EnumValueDef> _parseEnumValues(Object? value, String modelName) {
     final body = _mapValue(entry.value, 'models.$modelName.enum.$name');
     values[name] = EnumValueDef(
       name: name,
-      stringValue: _optionalString(body['string'], 'models.$modelName.enum.$name.string'),
+      stringValue: _optionalString(
+        body['string'],
+        'models.$modelName.enum.$name.string',
+      ),
       intValue: _optionalInt(body['int'], 'models.$modelName.enum.$name.int'),
     );
   }
@@ -76,8 +87,16 @@ Map<String, FieldDef> _parseFields(Object? value, String modelName) {
     }
 
     final body = _mapValue(raw, 'models.$modelName.fields.$name');
-    final typeText = _requiredString(body['type'], 'models.$modelName.fields.$name.type');
-    final nullable = _optionalBool(body['nullable'], 'models.$modelName.fields.$name.nullable') ?? false;
+    final typeText = _requiredString(
+      body['type'],
+      'models.$modelName.fields.$name.type',
+    );
+    final nullable =
+        _optionalBool(
+          body['nullable'],
+          'models.$modelName.fields.$name.nullable',
+        ) ??
+        false;
     final parsedType = parseType(typeText);
     fields[name] = FieldDef(
       name: name,
@@ -102,7 +121,9 @@ List<ConverterDef> _parseConverters(Object? value, String sourceName) {
     converters.add(
       ConverterDef(
         name: _optionalString(body['name'], 'converters[$index].name'),
-        from: parseType(_requiredString(body['from'], 'converters[$index].from')),
+        from: parseType(
+          _requiredString(body['from'], 'converters[$index].from'),
+        ),
         to: parseType(_requiredString(body['to'], 'converters[$index].to')),
         dart: _parseDartCodeSpec(body['dart'], index),
         csharp: _parseCSharpCodeSpec(body['csharp'], index),
@@ -115,16 +136,28 @@ List<ConverterDef> _parseConverters(Object? value, String sourceName) {
 DartCodeSpec _parseDartCodeSpec(Object? value, int index) {
   final body = _mapValue(value, 'converters[$index].dart');
   return DartCodeSpec(
-    imports: _optionalStringList(body['imports'], 'converters[$index].dart.imports'),
-    expression: _requiredString(body['expression'], 'converters[$index].dart.expression'),
+    imports: _optionalStringList(
+      body['imports'],
+      'converters[$index].dart.imports',
+    ),
+    expression: _requiredString(
+      body['expression'],
+      'converters[$index].dart.expression',
+    ),
   );
 }
 
 CSharpCodeSpec _parseCSharpCodeSpec(Object? value, int index) {
   final body = _mapValue(value, 'converters[$index].csharp');
   return CSharpCodeSpec(
-    usings: _optionalStringList(body['usings'], 'converters[$index].csharp.usings'),
-    expression: _requiredString(body['expression'], 'converters[$index].csharp.expression'),
+    usings: _optionalStringList(
+      body['usings'],
+      'converters[$index].csharp.usings',
+    ),
+    expression: _requiredString(
+      body['expression'],
+      'converters[$index].csharp.expression',
+    ),
   );
 }
 
@@ -161,16 +194,27 @@ Map<String, FieldMapping> _parseMappingFields(Object? value, int mappingIndex) {
   final fields = <String, FieldMapping>{};
   for (final entry in value.entries) {
     final targetName = _stringKey(entry.key, 'mapping target field');
-    final body = _mapValue(entry.value, 'mappings[$mappingIndex].fields.$targetName');
+    final body = _mapValue(
+      entry.value,
+      'mappings[$mappingIndex].fields.$targetName',
+    );
     final hasFrom = body.containsKey('from');
     final hasConst = body.containsKey('const');
     if (hasFrom == hasConst) {
-      throw MapperException('mappings[$mappingIndex].fields.$targetName must contain exactly one of from or const.');
+      throw MapperException(
+        'mappings[$mappingIndex].fields.$targetName must contain exactly one of from or const.',
+      );
     }
     fields[targetName] = hasFrom
         ? FieldMapping.from(
-            _requiredString(body['from'], 'mappings[$mappingIndex].fields.$targetName.from'),
-            converterName: _optionalString(body['converter'], 'mappings[$mappingIndex].fields.$targetName.converter'),
+            _requiredString(
+              body['from'],
+              'mappings[$mappingIndex].fields.$targetName.from',
+            ),
+            converterName: _optionalString(
+              body['converter'],
+              'mappings[$mappingIndex].fields.$targetName.converter',
+            ),
           )
         : FieldMapping.constant(body['const']);
   }
@@ -237,6 +281,9 @@ List<String> _optionalStringList(Object? value, String context) {
   }
   return [
     for (final item in value)
-      if (item is String) item else throw MapperException('$context must contain only strings.'),
+      if (item is String)
+        item
+      else
+        throw MapperException('$context must contain only strings.'),
   ];
 }

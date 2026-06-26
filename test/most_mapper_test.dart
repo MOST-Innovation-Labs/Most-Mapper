@@ -8,92 +8,227 @@ import 'package:most_mapper/src/type_parser.dart';
 import 'package:test/test.dart';
 
 void main() {
-  test('parses models, enums, converters, multiline expressions, mappings, and json flags', () {
-    final schema = parseMappingYaml(_sampleYaml);
-    final modelA = schema.models['ModelA']! as DataModelDef;
-    final paymentStatus = schema.models['PaymentStatus']! as EnumModelDef;
+  test(
+    'parses models, enums, converters, multiline expressions, mappings, and json flags',
+    () {
+      final schema = parseMappingYaml(_sampleYaml);
+      final modelA = schema.models['ModelA']! as DataModelDef;
+      final paymentStatus = schema.models['PaymentStatus']! as EnumModelDef;
 
-    expect(modelA.json, isTrue);
-    expect(modelA.fields['createdAt']!.type.nullable, isTrue);
-    expect(modelA.fields['bs']!.type.item!.name, 'ModelB');
-    expect(paymentStatus.values['captured']!.stringValue, 'captured');
-    expect(paymentStatus.values['captured']!.intValue, 1);
-    expect(schema.converters[0].name, isNull);
-    expect(schema.converters[1].dart.expression, contains('\n'));
-    expect(schema.mappings.first.fields['Datetime']!.converterName, 'offsetDateTimeToString');
-    expect(schema.mappings.last.fields['SomeField']!.hasConst, isTrue);
-  });
+      expect(modelA.json, isTrue);
+      expect(modelA.fields['createdAt']!.type.nullable, isTrue);
+      expect(modelA.fields['bs']!.type.item!.name, 'ModelB');
+      expect(paymentStatus.values['captured']!.stringValue, 'captured');
+      expect(paymentStatus.values['captured']!.intValue, 1);
+      expect(schema.converters[0].name, isNull);
+      expect(schema.converters[1].dart.expression, contains('\n'));
+      expect(
+        schema.mappings.first.fields['Datetime']!.converterName,
+        'offsetDateTimeToString',
+      );
+      expect(schema.mappings.last.fields['SomeField']!.hasConst, isTrue);
+    },
+  );
 
-  test('validates default mapping, numeric casts, enum scalar conversions, and converters', () {
-    final resolved = _resolvedSample();
+  test(
+    'validates default mapping, numeric casts, enum scalar conversions, and converters',
+    () {
+      final resolved = _resolvedSample();
 
-    expect(resolved.canConvert(parseType('PaymentStatus'), parseType('String')), isTrue);
-    expect(resolved.canConvert(parseType('PaymentStatus'), parseType('int')), isTrue);
-    expect(resolved.canConvert(parseType('String'), parseType('PaymentStatus')), isTrue);
-    expect(resolved.canConvert(parseType('int'), parseType('PaymentStatus')), isTrue);
-    expect(resolved.canConvert(parseType('int'), parseType('decimal')), isTrue);
-    expect(resolved.canConvert(parseType('Measurement'), parseType('decimal')), isTrue);
-    expect(resolved.canConvert(parseType('List<ModelB>'), parseType('List<ModelBWire>')), isTrue);
-  });
+      expect(
+        resolved.canConvert(parseType('PaymentStatus'), parseType('String')),
+        isTrue,
+      );
+      expect(
+        resolved.canConvert(parseType('PaymentStatus'), parseType('int')),
+        isTrue,
+      );
+      expect(
+        resolved.canConvert(parseType('String'), parseType('PaymentStatus')),
+        isTrue,
+      );
+      expect(
+        resolved.canConvert(parseType('int'), parseType('PaymentStatus')),
+        isTrue,
+      );
+      expect(
+        resolved.canConvert(parseType('int'), parseType('decimal')),
+        isTrue,
+      );
+      expect(
+        resolved.canConvert(parseType('Measurement'), parseType('decimal')),
+        isTrue,
+      );
+      expect(
+        resolved.canConvert(
+          parseType('List<ModelB>'),
+          parseType('List<ModelBWire>'),
+        ),
+        isTrue,
+      );
+    },
+  );
 
-  test('emits Dart models, JSON helpers, enum helpers, mapping extensions, casts, and converters', () {
-    final output = emitDart(_resolvedSample());
+  test(
+    'emits Dart models, JSON helpers, enum helpers, mapping extensions, casts, and converters',
+    () {
+      final output = emitDart(_resolvedSample());
 
-    expect(output, contains('enum PaymentStatus'));
-    expect(output, contains('Map<String, dynamic> toJson()'));
-    expect(output, contains('paymentStatusToString(source.status)'));
-    expect(output, contains('paymentStatusToInt(source.status)'));
-    expect(output, isNot(contains('_mappingDateTimeToJson')));
-    expect(output, isNot(contains('_mappingDateTimeFromJson')));
-    expect(
-      output,
-      contains('// ignore_for_file: unnecessary_parenthesis, unused_element, avoid-high-cyclomatic-complexity'),
-    );
-    expect(output, contains('class MappingConverters'));
-    expect(output, isNot(contains('static String _dateTimeToString(DateTime source)')));
-    expect(output, isNot(contains('static DateTime stringToDateTime(String source)')));
-    expect(output, contains('static double measurementToDecimal(Measurement source)'));
-    expect(output, contains('return (source.value / pow(10, source.scale));'));
-    expect(output, contains('MappingConverters.offsetDateTimeToString(createdAt!)'));
-    expect(output, contains("MappingConverters.offsetStringToDateTime(json['createdAt'] as String)"));
-    expect(output, contains('extension ModelBToModelBWire on ModelB'));
-    expect(output, contains('ModelBWire toModelBWire()'));
-    expect(output, contains('item.toModelBWire()'));
-    expect(output, contains('id: source.jsonFieldName'));
-    expect(output, isNot(contains('id: source.jsonFieldName == null ? null : source.jsonFieldName!')));
-    expect(output, contains('MappingConverters.measurementToDecimal(source.reading)'));
-    expect(output, contains('MappingConverters.offsetDateTimeToString(source.datetime)'));
-    expect(output, contains('withoutOffsetUtc.subtract(offset)'));
-    expect(output, contains('someField: null'));
-  });
+      expect(output, contains('enum PaymentStatus'));
+      expect(output, contains('Map<String, dynamic> toJson()'));
+      expect(output, contains('paymentStatusToString(source.status)'));
+      expect(output, contains('paymentStatusToInt(source.status)'));
+      expect(output, isNot(contains('_mappingDateTimeToJson')));
+      expect(output, isNot(contains('_mappingDateTimeFromJson')));
+      expect(
+        output,
+        contains(
+          '// ignore_for_file: unnecessary_parenthesis, unused_element, avoid-high-cyclomatic-complexity',
+        ),
+      );
+      expect(output, contains('class MappingConverters'));
+      expect(
+        output,
+        isNot(contains('static String _dateTimeToString(DateTime source)')),
+      );
+      expect(
+        output,
+        isNot(contains('static DateTime stringToDateTime(String source)')),
+      );
+      expect(
+        output,
+        contains('static double measurementToDecimal(Measurement source)'),
+      );
+      expect(
+        output,
+        contains('return (source.value / pow(10, source.scale));'),
+      );
+      expect(
+        output,
+        contains('MappingConverters.offsetDateTimeToString(createdAt!)'),
+      );
+      expect(
+        output,
+        contains(
+          "MappingConverters.offsetStringToDateTime(json['createdAt'] as String)",
+        ),
+      );
+      expect(output, contains('extension ModelBToModelBWire on ModelB'));
+      expect(output, contains('ModelBWire toModelBWire()'));
+      expect(output, contains('item.toModelBWire()'));
+      expect(output, contains('id: source.jsonFieldName'));
+      expect(
+        output,
+        isNot(
+          contains(
+            'id: source.jsonFieldName == null ? null : source.jsonFieldName!',
+          ),
+        ),
+      );
+      expect(
+        output,
+        contains('MappingConverters.measurementToDecimal(source.reading)'),
+      );
+      expect(
+        output,
+        contains('MappingConverters.offsetDateTimeToString(source.datetime)'),
+      );
+      expect(output, contains('withoutOffsetUtc.subtract(offset)'));
+      expect(output, contains('someField: null'));
+    },
+  );
 
-  test('emits C# models, JSON helpers, enum helpers, mapping extensions, casts, and converters', () {
-    final output = emitCSharp(_resolvedSample());
+  test(
+    'emits C# models, JSON helpers, enum helpers, mapping extensions, casts, and converters',
+    () {
+      final output = emitCSharp(_resolvedSample());
 
-    expect(output, contains('public enum PaymentStatus'));
-    expect(output, contains('public Dictionary<string, object?> ToJsonMap()'));
-    expect(output, contains('PaymentStatusConversions.ToStringValue(source.Status)'));
-    expect(output, contains('PaymentStatusConversions.ToIntValue(source.Status)'));
-    expect(output, isNot(contains('MappingJson.DateTimeToJson')));
-    expect(output, isNot(contains('MappingJson.DateTimeFromJson')));
-    expect(output, isNot(contains('private static string DateTimeToString(System.DateTime source)')));
-    expect(output, isNot(contains('private static System.DateTime StringToDateTime(string source)')));
-    expect(output, contains('public static class MappingConverters'));
-    expect(output, contains('public static decimal MeasurementToDecimal(Measurement source)'));
-    expect(output, isNot(contains('private static decimal MeasurementToDecimal(Measurement source)')));
-    expect(output, contains('MappingConverters.OffsetDateTimeToString(CreatedAt.Value)'));
-    expect(output, contains('MappingConverters.OffsetStringToDateTime(createdAtJson.GetString()!)'));
-    expect(output, contains('public static ModelBWire ToModelBWire('));
-    expect(output, contains('this ModelB source)'));
-    expect(output, contains('item.ToModelBWire()'));
-    expect(output, contains('Id = source.JsonFieldName'));
-    expect(output, isNot(contains('Id = source.JsonFieldName == null ? null : source.JsonFieldName')));
-    expect(output, contains('MappingConverters.MeasurementToDecimal(source.Reading)'));
-    expect(output, contains('MappingConverters.OffsetDateTimeToString(source.Datetime)'));
-    expect(output, contains('DateTimeOffset.ParseExact('));
-    expect(output, contains('return (\n            DateTimeOffset.ParseExact(\n                source,'));
-    expect(output, contains('SomeField = null'));
-  });
+      expect(output, contains('public enum PaymentStatus'));
+      expect(
+        output,
+        contains('public Dictionary<string, object?> ToJsonMap()'),
+      );
+      expect(
+        output,
+        contains('PaymentStatusConversions.ToStringValue(source.Status)'),
+      );
+      expect(
+        output,
+        contains('PaymentStatusConversions.ToIntValue(source.Status)'),
+      );
+      expect(output, isNot(contains('MappingJson.DateTimeToJson')));
+      expect(output, isNot(contains('MappingJson.DateTimeFromJson')));
+      expect(
+        output,
+        isNot(
+          contains(
+            'private static string DateTimeToString(System.DateTime source)',
+          ),
+        ),
+      );
+      expect(
+        output,
+        isNot(
+          contains(
+            'private static System.DateTime StringToDateTime(string source)',
+          ),
+        ),
+      );
+      expect(output, contains('public static class MappingConverters'));
+      expect(
+        output,
+        contains(
+          'public static decimal MeasurementToDecimal(Measurement source)',
+        ),
+      );
+      expect(
+        output,
+        isNot(
+          contains(
+            'private static decimal MeasurementToDecimal(Measurement source)',
+          ),
+        ),
+      );
+      expect(
+        output,
+        contains('MappingConverters.OffsetDateTimeToString(CreatedAt.Value)'),
+      );
+      expect(
+        output,
+        contains(
+          'MappingConverters.OffsetStringToDateTime(createdAtJson.GetString()!)',
+        ),
+      );
+      expect(output, contains('public static ModelBWire ToModelBWire('));
+      expect(output, contains('this ModelB source)'));
+      expect(output, contains('item.ToModelBWire()'));
+      expect(output, contains('Id = source.JsonFieldName'));
+      expect(
+        output,
+        isNot(
+          contains(
+            'Id = source.JsonFieldName == null ? null : source.JsonFieldName',
+          ),
+        ),
+      );
+      expect(
+        output,
+        contains('MappingConverters.MeasurementToDecimal(source.Reading)'),
+      );
+      expect(
+        output,
+        contains('MappingConverters.OffsetDateTimeToString(source.Datetime)'),
+      );
+      expect(output, contains('DateTimeOffset.ParseExact('));
+      expect(
+        output,
+        contains(
+          'return (\n            DateTimeOffset.ParseExact(\n                source,',
+        ),
+      );
+      expect(output, contains('SomeField = null'));
+    },
+  );
 
   test('rejects const null for non-nullable fields', () {
     final schema = parseMappingYaml('''
@@ -111,7 +246,10 @@ mappings:
       value: { const: null }
 ''');
 
-    expect(() => ResolvedSchema(schema).validate(), throwsA(isA<MapperException>()));
+    expect(
+      () => ResolvedSchema(schema).validate(),
+      throwsA(isA<MapperException>()),
+    );
   });
 
   test('uses default DateTime ISO converters for json DateTime fields', () {
@@ -126,11 +264,16 @@ models:
     final resolved = ResolvedSchema(schema);
 
     expect(() => resolved.validate(), returnsNormally);
-    expect(resolved.converterFor(parseType('DateTime'), parseType('String'))!.name, isNull);
+    expect(
+      resolved.converterFor(parseType('DateTime'), parseType('String'))!.name,
+      isNull,
+    );
     expect(emitDart(resolved), contains('source.toUtc().toIso8601String()'));
     expect(
       emitCSharp(resolved),
-      contains('ToString("yyyy-MM-dd\'T\'HH:mm:ss\'Z\'", System.Globalization.CultureInfo.InvariantCulture)'),
+      contains(
+        'ToString("yyyy-MM-dd\'T\'HH:mm:ss\'Z\'", System.Globalization.CultureInfo.InvariantCulture)',
+      ),
     );
   });
 
@@ -147,9 +290,20 @@ models:
 
     expect(() => resolved.validate(), returnsNormally);
     expect(emitDart(resolved), contains('final int epochMilliseconds;'));
-    expect(emitDart(resolved), contains("epochMilliseconds: json['epochMilliseconds'] as int"));
-    expect(emitCSharp(resolved), contains('public long EpochMilliseconds { get; set; }'));
-    expect(emitCSharp(resolved), contains('EpochMilliseconds = json.GetProperty("epochMilliseconds").GetInt64()'));
+    expect(
+      emitDart(resolved),
+      contains("epochMilliseconds: json['epochMilliseconds'] as int"),
+    );
+    expect(
+      emitCSharp(resolved),
+      contains('public long EpochMilliseconds { get; set; }'),
+    );
+    expect(
+      emitCSharp(resolved),
+      contains(
+        'EpochMilliseconds = json.GetProperty("epochMilliseconds").GetInt64()',
+      ),
+    );
   });
 
   test('allows unnamed converters and converter default selector', () {
@@ -185,20 +339,53 @@ mappings:
     final dart = emitDart(resolved);
     expect(dart, contains('static String dateTimeToString(DateTime source)'));
     expect(dart, contains('static String dateTimeToString2(DateTime source)'));
-    expect(dart, contains('defaultValue: MappingConverters.dateTimeToString(source.value)'));
-    expect(dart, contains('implicitValue: MappingConverters.dateTimeToString2(source.value)'));
-    expect(dart, isNot(contains('static DateTime stringToDateTime(String source)')));
+    expect(
+      dart,
+      contains(
+        'defaultValue: MappingConverters.dateTimeToString(source.value)',
+      ),
+    );
+    expect(
+      dart,
+      contains(
+        'implicitValue: MappingConverters.dateTimeToString2(source.value)',
+      ),
+    );
+    expect(
+      dart,
+      isNot(contains('static DateTime stringToDateTime(String source)')),
+    );
 
     final csharp = emitCSharp(resolved);
-    expect(csharp, contains('public static string DateTimeToString(System.DateTime source)'));
-    expect(csharp, contains('public static string DateTimeToString2(System.DateTime source)'));
-    expect(csharp, contains('DefaultValue = MappingConverters.DateTimeToString(source.Value)'));
-    expect(csharp, contains('ImplicitValue = MappingConverters.DateTimeToString2(source.Value)'));
+    expect(
+      csharp,
+      contains('public static string DateTimeToString(System.DateTime source)'),
+    );
+    expect(
+      csharp,
+      contains(
+        'public static string DateTimeToString2(System.DateTime source)',
+      ),
+    );
+    expect(
+      csharp,
+      contains(
+        'DefaultValue = MappingConverters.DateTimeToString(source.Value)',
+      ),
+    );
+    expect(
+      csharp,
+      contains(
+        'ImplicitValue = MappingConverters.DateTimeToString2(source.Value)',
+      ),
+    );
   });
 
-  test('uses the last converter for a type pair by default and named converters explicitly', () {
-    final resolved = ResolvedSchema(
-      parseMappingYaml('''
+  test(
+    'uses the last converter for a type pair by default and named converters explicitly',
+    () {
+      final resolved = ResolvedSchema(
+        parseMappingYaml('''
 models:
   A:
     fields:
@@ -229,20 +416,33 @@ mappings:
       value: { from: value }
       explicitValue: { from: value, converter: firstIntToString }
 '''),
-    );
-    resolved.validate();
+      );
+      resolved.validate();
 
-    final dart = emitDart(resolved);
-    expect(resolved.converterFor(parseType('int'), parseType('String'))!.name, 'secondIntToString');
-    expect(dart, contains('static String secondIntToString(int source)'));
-    expect(dart, contains('value: MappingConverters.secondIntToString(source.value)'));
-    expect(dart, contains('explicitValue: MappingConverters.firstIntToString(source.value)'));
-  });
+      final dart = emitDart(resolved);
+      expect(
+        resolved.converterFor(parseType('int'), parseType('String'))!.name,
+        'secondIntToString',
+      );
+      expect(dart, contains('static String secondIntToString(int source)'));
+      expect(
+        dart,
+        contains('value: MappingConverters.secondIntToString(source.value)'),
+      );
+      expect(
+        dart,
+        contains(
+          'explicitValue: MappingConverters.firstIntToString(source.value)',
+        ),
+      );
+    },
+  );
 
   test('writes requested output file names', () {
     final temp = Directory.systemTemp.createTempSync('most_mapper_test_');
     try {
-      final mapping = File('${temp.path}/mapping.yaml')..writeAsStringSync(_sampleYaml);
+      final mapping = File('${temp.path}/mapping.yaml')
+        ..writeAsStringSync(_sampleYaml);
       final result = generate(
         GeneratorOptions(
           mappingPath: mapping.path,

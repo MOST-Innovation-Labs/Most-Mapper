@@ -1,4 +1,14 @@
-# most_mapper
+<h1> MOST Mapper </h1>
+
+<p align="center">
+  <img src="images/logo.png" width="64" height="64" alt="most logo">
+</p>
+
+<p align="center">
+  <a href="https://pub.dev/packages/most_mapper">
+    <img src="https://img.shields.io/pub/v/most_mapper.svg?label=pub&color=orange" alt="pub version">
+  </a>
+</p>
 
 `most_mapper` is a Dart CLI package that generates Dart and C# mapping code from one YAML file.
 The mapping file declares data models, enums, converter expressions, and typed mappings between models.

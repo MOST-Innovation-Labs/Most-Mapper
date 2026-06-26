@@ -22,7 +22,9 @@ class _DartEmitter {
 
     final buffer = StringBuffer();
     buffer.writeln('// GENERATED CODE - DO NOT MODIFY BY HAND.');
-    buffer.writeln('// ignore_for_file: unnecessary_parenthesis, unused_element, avoid-high-cyclomatic-complexity');
+    buffer.writeln(
+      '// ignore_for_file: unnecessary_parenthesis, unused_element, avoid-high-cyclomatic-complexity',
+    );
     buffer.writeln();
 
     final imports = <String>{};
@@ -64,8 +66,12 @@ class _DartEmitter {
     buffer.writeln('  const MappingConverters._();');
     buffer.writeln();
     for (final converter in converters) {
-      final methodName = _converterMethodNames[converter] ?? dartConverterBaseMethodName(converter);
-      buffer.writeln('  static ${_dartType(converter.to)} $methodName(${_dartType(converter.from)} source) {');
+      final methodName =
+          _converterMethodNames[converter] ??
+          dartConverterBaseMethodName(converter);
+      buffer.writeln(
+        '  static ${_dartType(converter.to)} $methodName(${_dartType(converter.from)} source) {',
+      );
       buffer.writeln('    return (${converter.dart.expression.trim()});');
       buffer.writeln('  }');
       buffer.writeln();
@@ -84,7 +90,9 @@ class _DartEmitter {
     buffer.writeln();
 
     if (resolved.enumHasStrings(enumDef)) {
-      buffer.writeln('String ${_enumToStringName(enumDef.name)}(${dartTypeName(enumDef.name)} value) {');
+      buffer.writeln(
+        'String ${_enumToStringName(enumDef.name)}(${dartTypeName(enumDef.name)} value) {',
+      );
       buffer.writeln('  switch (value) {');
       for (final value in enumDef.values.values) {
         buffer.writeln(
@@ -96,7 +104,9 @@ class _DartEmitter {
       buffer.writeln('}');
       buffer.writeln();
 
-      buffer.writeln('${dartTypeName(enumDef.name)} ${_enumFromStringName(enumDef.name)}(String value) {');
+      buffer.writeln(
+        '${dartTypeName(enumDef.name)} ${_enumFromStringName(enumDef.name)}(String value) {',
+      );
       buffer.writeln('  switch (value) {');
       for (final value in enumDef.values.values) {
         buffer.writeln(
@@ -114,7 +124,9 @@ class _DartEmitter {
     }
 
     if (resolved.enumHasInts(enumDef)) {
-      buffer.writeln('int ${_enumToIntName(enumDef.name)}(${dartTypeName(enumDef.name)} value) {');
+      buffer.writeln(
+        'int ${_enumToIntName(enumDef.name)}(${dartTypeName(enumDef.name)} value) {',
+      );
       buffer.writeln('  switch (value) {');
       for (final value in enumDef.values.values) {
         buffer.writeln(
@@ -125,7 +137,9 @@ class _DartEmitter {
       buffer.writeln('}');
       buffer.writeln();
 
-      buffer.writeln('${dartTypeName(enumDef.name)} ${_enumFromIntName(enumDef.name)}(int value) {');
+      buffer.writeln(
+        '${dartTypeName(enumDef.name)} ${_enumFromIntName(enumDef.name)}(int value) {',
+      );
       buffer.writeln('  switch (value) {');
       for (final value in enumDef.values.values) {
         buffer.writeln(
@@ -133,7 +147,9 @@ class _DartEmitter {
         );
       }
       buffer.writeln('    default:');
-      buffer.writeln("      throw ArgumentError.value(value, 'value', 'Unknown ${dartTypeName(enumDef.name)} int');");
+      buffer.writeln(
+        "      throw ArgumentError.value(value, 'value', 'Unknown ${dartTypeName(enumDef.name)} int');",
+      );
       buffer.writeln('  }');
       buffer.writeln('}');
       buffer.writeln();
@@ -156,7 +172,9 @@ class _DartEmitter {
 
     for (final field in model.fields.values) {
       _writeDoc(buffer, field.doc, indent: '  ');
-      buffer.writeln('  final ${_dartType(field.type)} ${dartFieldName(field.name)};');
+      buffer.writeln(
+        '  final ${_dartType(field.type)} ${dartFieldName(field.name)};',
+      );
     }
 
     if (model.json) {
@@ -174,7 +192,9 @@ class _DartEmitter {
       );
       for (final field in model.fields.values) {
         final jsonAccess = "json[${dartStringLiteral(field.name)}]";
-        buffer.writeln('    ${dartFieldName(field.name)}: ${_fromJsonExpression(field.type, jsonAccess)},');
+        buffer.writeln(
+          '    ${dartFieldName(field.name)}: ${_fromJsonExpression(field.type, jsonAccess)},',
+        );
       }
       buffer.writeln('  );');
     }
@@ -184,12 +204,18 @@ class _DartEmitter {
   }
 
   void _writeMapping(StringBuffer buffer, MappingDef mapping) {
-    buffer.writeln('extension ${_mappingExtensionName(mapping.from, mapping.to)} on ${dartTypeName(mapping.from)} {');
-    buffer.writeln('  ${dartTypeName(mapping.to)} ${_mappingMethodName(mapping.to)}() {');
+    buffer.writeln(
+      'extension ${_mappingExtensionName(mapping.from, mapping.to)} on ${dartTypeName(mapping.from)} {',
+    );
+    buffer.writeln(
+      '  ${dartTypeName(mapping.to)} ${_mappingMethodName(mapping.to)}() {',
+    );
     buffer.writeln('    final source = this;');
     buffer.writeln('    return ${dartTypeName(mapping.to)}(');
     for (final assignment in resolved.mappingAssignments(mapping)) {
-      buffer.writeln('      ${dartFieldName(assignment.targetField.name)}: ${_assignmentExpression(assignment)},');
+      buffer.writeln(
+        '      ${dartFieldName(assignment.targetField.name)}: ${_assignmentExpression(assignment)},',
+      );
     }
     buffer.writeln('    );');
     buffer.writeln('  }');
@@ -199,15 +225,21 @@ class _DartEmitter {
 
   String _assignmentExpression(ResolvedFieldAssignment assignment) {
     return switch (assignment) {
-      ResolvedConstantFieldAssignment(:final constValue) => _dartConstant(constValue),
-      ResolvedSourceFieldAssignment(:final sourceField, :final conversion) => _convertExpression(
-        conversion,
-        'source.${dartFieldName(sourceField.name)}',
+      ResolvedConstantFieldAssignment(:final constValue) => _dartConstant(
+        constValue,
       ),
+      ResolvedSourceFieldAssignment(:final sourceField, :final conversion) =>
+        _convertExpression(
+          conversion,
+          'source.${dartFieldName(sourceField.name)}',
+        ),
     };
   }
 
-  String _convertExpression(ConversionPlan conversion, String sourceExpression) {
+  String _convertExpression(
+    ConversionPlan conversion,
+    String sourceExpression,
+  ) {
     return switch (conversion) {
       IdentityConversionPlan() => sourceExpression,
       NullableConversionPlan(:final inner) =>
@@ -219,14 +251,14 @@ class _DartEmitter {
         'double' || 'decimal' => '$sourceExpression.toDouble()',
         _ => sourceExpression,
       },
-      EnumScalarConversionPlan(:final enumName, :final kind, :final fromEnum) => _enumScalarExpression(
-        enumName,
-        kind,
-        fromEnum,
+      EnumScalarConversionPlan(:final enumName, :final kind, :final fromEnum) =>
+        _enumScalarExpression(enumName, kind, fromEnum, sourceExpression),
+      ModelMappingConversionPlan(:final mapping) =>
+        '$sourceExpression.${_mappingMethodName(mapping.to)}()',
+      ConverterConversionPlan(:final converter) => _converterCall(
+        converter,
         sourceExpression,
       ),
-      ModelMappingConversionPlan(:final mapping) => '$sourceExpression.${_mappingMethodName(mapping.to)}()',
-      ConverterConversionPlan(:final converter) => _converterCall(converter, sourceExpression),
     };
   }
 
@@ -278,7 +310,9 @@ class _DartEmitter {
   }
 
   String _dartType(TypeRef type) {
-    final base = type.isList ? 'List<${_dartType(type.item!)}>' : _dartBaseType(type.name);
+    final base = type.isList
+        ? 'List<${_dartType(type.item!)}>'
+        : _dartBaseType(type.name);
     return type.nullable ? '$base?' : base;
   }
 
@@ -317,28 +351,43 @@ class _DartEmitter {
   }
 
   String _converterCall(ConverterDef converter, String sourceExpression) {
-    final methodName = _converterMethodNames[converter] ?? dartConverterBaseMethodName(converter);
+    final methodName =
+        _converterMethodNames[converter] ??
+        dartConverterBaseMethodName(converter);
     return 'MappingConverters.$methodName($sourceExpression)';
   }
 
-  String _enumScalarExpression(String enumName, EnumScalarKind kind, bool fromEnum, String sourceExpression) {
+  String _enumScalarExpression(
+    String enumName,
+    EnumScalarKind kind,
+    bool fromEnum,
+    String sourceExpression,
+  ) {
     return switch ((kind, fromEnum)) {
-      (EnumScalarKind.string, true) => '${_enumToStringName(enumName)}($sourceExpression)',
-      (EnumScalarKind.string, false) => '${_enumFromStringName(enumName)}($sourceExpression)',
-      (EnumScalarKind.int, true) => '${_enumToIntName(enumName)}($sourceExpression)',
-      (EnumScalarKind.int, false) => '${_enumFromIntName(enumName)}($sourceExpression)',
+      (EnumScalarKind.string, true) =>
+        '${_enumToStringName(enumName)}($sourceExpression)',
+      (EnumScalarKind.string, false) =>
+        '${_enumFromStringName(enumName)}($sourceExpression)',
+      (EnumScalarKind.int, true) =>
+        '${_enumToIntName(enumName)}($sourceExpression)',
+      (EnumScalarKind.int, false) =>
+        '${_enumFromIntName(enumName)}($sourceExpression)',
     };
   }
 
-  String _enumToStringName(String enumName) => '${dartFieldName(enumName)}ToString';
+  String _enumToStringName(String enumName) =>
+      '${dartFieldName(enumName)}ToString';
 
-  String _enumFromStringName(String enumName) => '${dartFieldName(enumName)}FromString';
+  String _enumFromStringName(String enumName) =>
+      '${dartFieldName(enumName)}FromString';
 
   String _enumToIntName(String enumName) => '${dartFieldName(enumName)}ToInt';
 
-  String _enumFromIntName(String enumName) => '${dartFieldName(enumName)}FromInt';
+  String _enumFromIntName(String enumName) =>
+      '${dartFieldName(enumName)}FromInt';
 
-  String _mappingExtensionName(String from, String to) => '${dartTypeName(from)}To${dartTypeName(to)}';
+  String _mappingExtensionName(String from, String to) =>
+      '${dartTypeName(from)}To${dartTypeName(to)}';
 
   String _mappingMethodName(String to) => 'to${dartTypeName(to)}';
 

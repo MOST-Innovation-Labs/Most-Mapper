@@ -7,7 +7,10 @@ final _defaultConverters = [
     name: null,
     from: dateTimeType,
     to: stringType,
-    dart: DartCodeSpec(imports: [], expression: 'source.toUtc().toIso8601String()'),
+    dart: DartCodeSpec(
+      imports: [],
+      expression: 'source.toUtc().toIso8601String()',
+    ),
     csharp: CSharpCodeSpec(
       usings: ['System.Globalization'],
       expression:
@@ -19,7 +22,10 @@ final _defaultConverters = [
     name: null,
     from: stringType,
     to: dateTimeType,
-    dart: DartCodeSpec(imports: [], expression: 'DateTime.parse(source).toUtc()'),
+    dart: DartCodeSpec(
+      imports: [],
+      expression: 'DateTime.parse(source).toUtc()',
+    ),
     csharp: CSharpCodeSpec(
       usings: ['System.Globalization'],
       expression:
@@ -45,7 +51,11 @@ class IdentityConversionPlan extends ConversionPlan {
 }
 
 class NullableConversionPlan extends ConversionPlan {
-  const NullableConversionPlan({required super.from, required super.to, required this.inner});
+  const NullableConversionPlan({
+    required super.from,
+    required super.to,
+    required this.inner,
+  });
 
   final ConversionPlan inner;
 
@@ -54,7 +64,11 @@ class NullableConversionPlan extends ConversionPlan {
 }
 
 class ListConversionPlan extends ConversionPlan {
-  const ListConversionPlan({required super.from, required super.to, required this.item});
+  const ListConversionPlan({
+    required super.from,
+    required super.to,
+    required this.item,
+  });
 
   final ConversionPlan item;
 
@@ -83,13 +97,21 @@ class EnumScalarConversionPlan extends ConversionPlan {
 }
 
 class ModelMappingConversionPlan extends ConversionPlan {
-  const ModelMappingConversionPlan({required super.from, required super.to, required this.mapping});
+  const ModelMappingConversionPlan({
+    required super.from,
+    required super.to,
+    required this.mapping,
+  });
 
   final MappingDef mapping;
 }
 
 class ConverterConversionPlan extends ConversionPlan {
-  const ConverterConversionPlan({required super.from, required super.to, required this.converter});
+  const ConverterConversionPlan({
+    required super.from,
+    required super.to,
+    required this.converter,
+  });
 
   final ConverterDef converter;
 
@@ -115,20 +137,26 @@ class ResolvedSourceFieldAssignment extends ResolvedFieldAssignment {
 }
 
 class ResolvedConstantFieldAssignment extends ResolvedFieldAssignment {
-  const ResolvedConstantFieldAssignment({required super.targetField, required this.constValue});
+  const ResolvedConstantFieldAssignment({
+    required super.targetField,
+    required this.constValue,
+  });
 
   final Object? constValue;
 }
 
 class ResolvedSchema {
-  ResolvedSchema(this.schema) : converters = [..._defaultConverters, ...schema.converters];
+  ResolvedSchema(this.schema)
+    : converters = [..._defaultConverters, ...schema.converters];
 
   final MapperSchema schema;
   final List<ConverterDef> converters;
 
-  Iterable<DataModelDef> get dataModels => schema.models.values.whereType<DataModelDef>();
+  Iterable<DataModelDef> get dataModels =>
+      schema.models.values.whereType<DataModelDef>();
 
-  Iterable<EnumModelDef> get enumModels => schema.models.values.whereType<EnumModelDef>();
+  Iterable<EnumModelDef> get enumModels =>
+      schema.models.values.whereType<EnumModelDef>();
 
   DataModelDef dataModel(String name) => schema.models[name]! as DataModelDef;
 
@@ -138,7 +166,10 @@ class ResolvedSchema {
 
   bool isEnum(String name) => schema.models[name] is EnumModelDef;
 
-  bool isKnownType(String name) => name == 'List' || isScalarTypeName(name) || schema.models.containsKey(name);
+  bool isKnownType(String name) =>
+      name == 'List' ||
+      isScalarTypeName(name) ||
+      schema.models.containsKey(name);
 
   bool enumHasStrings(EnumModelDef enumDef) {
     return enumDef.values.values.every((value) => value.stringValue != null);
@@ -161,7 +192,10 @@ class ResolvedSchema {
 
   ConverterDef? converterFor(TypeRef from, TypeRef to) {
     for (final converter in converters.reversed) {
-      if (converter.from.sameShape(from.nonNullable, includeNullability: false) &&
+      if (converter.from.sameShape(
+            from.nonNullable,
+            includeNullability: false,
+          ) &&
           converter.to.sameShape(to.nonNullable, includeNullability: false)) {
         return converter;
       }
@@ -171,7 +205,10 @@ class ResolvedSchema {
 
   ConverterDef? defaultConverterFor(TypeRef from, TypeRef to) {
     for (final converter in _defaultConverters.reversed) {
-      if (converter.from.sameShape(from.nonNullable, includeNullability: false) &&
+      if (converter.from.sameShape(
+            from.nonNullable,
+            includeNullability: false,
+          ) &&
           converter.to.sameShape(to.nonNullable, includeNullability: false)) {
         return converter;
       }
@@ -191,7 +228,9 @@ class ResolvedSchema {
   List<ConverterDef> convertersToEmit(Set<ConverterDef> usedConverters) {
     return [
       for (final converter in converters)
-        if (!_defaultConverters.contains(converter) || usedConverters.contains(converter)) converter,
+        if (!_defaultConverters.contains(converter) ||
+            usedConverters.contains(converter))
+          converter,
     ];
   }
 
@@ -239,10 +278,17 @@ class ResolvedSchema {
   List<ResolvedFieldAssignment> mappingAssignments(MappingDef mapping) {
     final fromModel = dataModel(mapping.from);
     final toModel = dataModel(mapping.to);
-    return [for (final targetField in toModel.fields.values) _mappingAssignment(fromModel, targetField, mapping)];
+    return [
+      for (final targetField in toModel.fields.values)
+        _mappingAssignment(fromModel, targetField, mapping),
+    ];
   }
 
-  ResolvedFieldAssignment _mappingAssignment(DataModelDef fromModel, FieldDef targetField, MappingDef mapping) {
+  ResolvedFieldAssignment _mappingAssignment(
+    DataModelDef fromModel,
+    FieldDef targetField,
+    MappingDef mapping,
+  ) {
     final fieldMapping = mapping.fields[targetField.name];
     if (fieldMapping == null) {
       final sourceField = fromModel.fields[targetField.name]!;
@@ -253,14 +299,21 @@ class ResolvedSchema {
       );
     }
     if (fieldMapping.hasConst) {
-      return ResolvedConstantFieldAssignment(targetField: targetField, constValue: fieldMapping.constValue);
+      return ResolvedConstantFieldAssignment(
+        targetField: targetField,
+        constValue: fieldMapping.constValue,
+      );
     }
 
     final sourceField = fromModel.fields[fieldMapping.fromField]!;
     return ResolvedSourceFieldAssignment(
       targetField: targetField,
       sourceField: sourceField,
-      conversion: conversionPlanFor(sourceField.type, targetField.type, converterName: fieldMapping.converterName)!,
+      conversion: conversionPlanFor(
+        sourceField.type,
+        targetField.type,
+        converterName: fieldMapping.converterName,
+      )!,
     );
   }
 
@@ -272,7 +325,11 @@ class ResolvedSchema {
     return _conversionPlanForNonNull(from.nonNullable, to.nonNullable) != null;
   }
 
-  ConversionPlan? conversionPlanFor(TypeRef from, TypeRef to, {String? converterName}) {
+  ConversionPlan? conversionPlanFor(
+    TypeRef from,
+    TypeRef to, {
+    String? converterName,
+  }) {
     if (converterName == null && from.sameShape(to)) {
       return IdentityConversionPlan(from: from, to: to);
     }
@@ -280,20 +337,36 @@ class ResolvedSchema {
       return null;
     }
     if (from.nullable && to.nullable) {
-      final inner = _conversionPlanForNonNull(from.nonNullable, to.nonNullable, converterName: converterName);
+      final inner = _conversionPlanForNonNull(
+        from.nonNullable,
+        to.nonNullable,
+        converterName: converterName,
+      );
       if (inner == null) {
         return null;
       }
       return NullableConversionPlan(from: from, to: to, inner: inner);
     }
-    return _conversionPlanForNonNull(from.nonNullable, to.nonNullable, converterName: converterName);
+    return _conversionPlanForNonNull(
+      from.nonNullable,
+      to.nonNullable,
+      converterName: converterName,
+    );
   }
 
-  ConversionPlan? _conversionPlanForNonNull(TypeRef from, TypeRef to, {String? converterName}) {
+  ConversionPlan? _conversionPlanForNonNull(
+    TypeRef from,
+    TypeRef to, {
+    String? converterName,
+  }) {
     if (converterName == 'default') {
       final converter = defaultConverterFor(from, to);
       if (converter != null) {
-        return ConverterConversionPlan(from: from, to: to, converter: converter);
+        return ConverterConversionPlan(
+          from: from,
+          to: to,
+          converter: converter,
+        );
       }
     } else if (converterName != null) {
       final converter = converterByName(converterName);
@@ -318,7 +391,9 @@ class ResolvedSchema {
     if (isNumericType(from) && isNumericType(to)) {
       return NumericConversionPlan(from: from, to: to);
     }
-    if (isEnum(from.name) && to.name == stringType.name && enumHasStrings(enumModel(from.name))) {
+    if (isEnum(from.name) &&
+        to.name == stringType.name &&
+        enumHasStrings(enumModel(from.name))) {
       return EnumScalarConversionPlan(
         from: from,
         to: to,
@@ -327,7 +402,9 @@ class ResolvedSchema {
         fromEnum: true,
       );
     }
-    if (from.name == stringType.name && isEnum(to.name) && enumHasStrings(enumModel(to.name))) {
+    if (from.name == stringType.name &&
+        isEnum(to.name) &&
+        enumHasStrings(enumModel(to.name))) {
       return EnumScalarConversionPlan(
         from: from,
         to: to,
@@ -336,7 +413,9 @@ class ResolvedSchema {
         fromEnum: false,
       );
     }
-    if (isEnum(from.name) && to.name == 'int' && enumHasInts(enumModel(from.name))) {
+    if (isEnum(from.name) &&
+        to.name == 'int' &&
+        enumHasInts(enumModel(from.name))) {
       return EnumScalarConversionPlan(
         from: from,
         to: to,
@@ -345,8 +424,16 @@ class ResolvedSchema {
         fromEnum: true,
       );
     }
-    if (from.name == 'int' && isEnum(to.name) && enumHasInts(enumModel(to.name))) {
-      return EnumScalarConversionPlan(from: from, to: to, enumName: to.name, kind: EnumScalarKind.int, fromEnum: false);
+    if (from.name == 'int' &&
+        isEnum(to.name) &&
+        enumHasInts(enumModel(to.name))) {
+      return EnumScalarConversionPlan(
+        from: from,
+        to: to,
+        enumName: to.name,
+        kind: EnumScalarKind.int,
+        fromEnum: false,
+      );
     }
     if (isDataModel(from.name) && isDataModel(to.name)) {
       final mapping = mappingFor(from, to);
@@ -389,11 +476,31 @@ class ResolvedSchema {
     final dartNames = <String, String>{};
     final csharpNames = <String, String>{};
     for (final field in model.fields.values) {
-      _validateType(field.type, 'models.${model.name}.fields.${field.name}', errors);
-      _recordIdentifier(dartNames, dartFieldName(field.name), field.name, 'Dart', model.name, errors);
-      _recordIdentifier(csharpNames, csharpPropertyName(field.name), field.name, 'C#', model.name, errors);
+      _validateType(
+        field.type,
+        'models.${model.name}.fields.${field.name}',
+        errors,
+      );
+      _recordIdentifier(
+        dartNames,
+        dartFieldName(field.name),
+        field.name,
+        'Dart',
+        model.name,
+        errors,
+      );
+      _recordIdentifier(
+        csharpNames,
+        csharpPropertyName(field.name),
+        field.name,
+        'C#',
+        model.name,
+        errors,
+      );
       if (model.json && !_canUseJson(field.type)) {
-        errors.add('models.${model.name}.fields.${field.name} is not JSON serializable.');
+        errors.add(
+          'models.${model.name}.fields.${field.name} is not JSON serializable.',
+        );
       }
     }
   }
@@ -408,13 +515,31 @@ class ResolvedSchema {
     final strings = <String>{};
     final ints = <int>{};
     for (final value in model.values.values) {
-      _recordIdentifier(dartNames, dartEnumValueName(value.name), value.name, 'Dart enum', model.name, errors);
-      _recordIdentifier(csharpNames, csharpEnumValueName(value.name), value.name, 'C# enum', model.name, errors);
+      _recordIdentifier(
+        dartNames,
+        dartEnumValueName(value.name),
+        value.name,
+        'Dart enum',
+        model.name,
+        errors,
+      );
+      _recordIdentifier(
+        csharpNames,
+        csharpEnumValueName(value.name),
+        value.name,
+        'C# enum',
+        model.name,
+        errors,
+      );
       if (value.stringValue != null && !strings.add(value.stringValue!)) {
-        errors.add('models.${model.name}.enum has duplicate string value ${value.stringValue}.');
+        errors.add(
+          'models.${model.name}.enum has duplicate string value ${value.stringValue}.',
+        );
       }
       if (value.intValue != null && !ints.add(value.intValue!)) {
-        errors.add('models.${model.name}.enum has duplicate int value ${value.intValue}.');
+        errors.add(
+          'models.${model.name}.enum has duplicate int value ${value.intValue}.',
+        );
       }
     }
   }
@@ -445,23 +570,34 @@ class ResolvedSchema {
     final from = schema.models[mapping.from];
     final to = schema.models[mapping.to];
     if (from is! DataModelDef) {
-      errors.add('mappings ${mapping.from}->${mapping.to} references non-data source model ${mapping.from}.');
+      errors.add(
+        'mappings ${mapping.from}->${mapping.to} references non-data source model ${mapping.from}.',
+      );
       return;
     }
     if (to is! DataModelDef) {
-      errors.add('mappings ${mapping.from}->${mapping.to} references non-data target model ${mapping.to}.');
+      errors.add(
+        'mappings ${mapping.from}->${mapping.to} references non-data target model ${mapping.to}.',
+      );
       return;
     }
 
     for (final entry in mapping.fields.entries) {
       final targetField = to.fields[entry.key];
       if (targetField == null) {
-        errors.add('mappings ${mapping.from}->${mapping.to} references unknown target field ${entry.key}.');
+        errors.add(
+          'mappings ${mapping.from}->${mapping.to} references unknown target field ${entry.key}.',
+        );
         continue;
       }
       final fieldMapping = entry.value;
       if (fieldMapping.hasConst) {
-        _validateConstant(fieldMapping.constValue, targetField.type, entry.key, errors);
+        _validateConstant(
+          fieldMapping.constValue,
+          targetField.type,
+          entry.key,
+          errors,
+        );
         continue;
       }
       final sourceField = from.fields[fieldMapping.fromField];
@@ -471,7 +607,8 @@ class ResolvedSchema {
         );
         continue;
       }
-      if (fieldMapping.converterName case final String converterName when converterName != 'default') {
+      if (fieldMapping.converterName case final String converterName
+          when converterName != 'default') {
         _validateExplicitConverter(
           converterName,
           sourceField.type,
@@ -496,7 +633,9 @@ class ResolvedSchema {
       }
       final sourceField = from.fields[targetField.name];
       if (sourceField == null) {
-        errors.add('mappings ${mapping.from}->${mapping.to} does not assign target field ${targetField.name}.');
+        errors.add(
+          'mappings ${mapping.from}->${mapping.to} does not assign target field ${targetField.name}.',
+        );
         continue;
       }
       if (!canConvert(sourceField.type, targetField.type)) {
@@ -530,7 +669,10 @@ class ResolvedSchema {
       );
       return;
     }
-    if (!converter.from.sameShape(from.nonNullable, includeNullability: false) ||
+    if (!converter.from.sameShape(
+          from.nonNullable,
+          includeNullability: false,
+        ) ||
         !converter.to.sameShape(to.nonNullable, includeNullability: false)) {
       errors.add(
         'mappings ${mapping.from}->${mapping.to}.$targetFieldName converter $converterName has type '
@@ -540,10 +682,17 @@ class ResolvedSchema {
     }
   }
 
-  void _validateConstant(Object? value, TypeRef target, String targetName, List<String> errors) {
+  void _validateConstant(
+    Object? value,
+    TypeRef target,
+    String targetName,
+    List<String> errors,
+  ) {
     if (value == null) {
       if (!target.nullable) {
-        errors.add('const null can only be assigned to nullable target field $targetName.');
+        errors.add(
+          'const null can only be assigned to nullable target field $targetName.',
+        );
       }
       return;
     }
@@ -553,11 +702,16 @@ class ResolvedSchema {
       String() => targetType.name == stringType.name,
       bool() => targetType.name == 'bool',
       int() => isNumericType(targetType),
-      double() => targetType.name == 'double' || targetType.name == 'num' || targetType.name == 'decimal',
+      double() =>
+        targetType.name == 'double' ||
+            targetType.name == 'num' ||
+            targetType.name == 'decimal',
       _ => false,
     };
     if (!valid) {
-      errors.add('const value for $targetName is not assignable to ${target.display}.');
+      errors.add(
+        'const value for $targetName is not assignable to ${target.display}.',
+      );
     }
   }
 
@@ -569,14 +723,17 @@ class ResolvedSchema {
       return _canUseJson(type.item!);
     }
     if (type.name == dateTimeType.name) {
-      return converterFor(type, stringType) != null && converterFor(stringType, type) != null;
+      return converterFor(type, stringType) != null &&
+          converterFor(stringType, type) != null;
     }
     if (isScalarTypeName(type.name)) {
       return true;
     }
     if (isEnum(type.name)) {
       final enumDef = enumModel(type.name);
-      return enumDef.values.values.every((value) => value.stringValue != null || value.intValue != null);
+      return enumDef.values.values.every(
+        (value) => value.stringValue != null || value.intValue != null,
+      );
     }
     if (schema.models[type.name] case final DataModelDef model) {
       return model.json;
@@ -594,7 +751,9 @@ class ResolvedSchema {
   ) {
     final previous = seen[identifier];
     if (previous != null) {
-      errors.add('$language identifier collision in $modelName: $previous and $raw both become $identifier.');
+      errors.add(
+        '$language identifier collision in $modelName: $previous and $raw both become $identifier.',
+      );
     }
     seen[identifier] = raw;
   }

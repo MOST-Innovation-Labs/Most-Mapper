@@ -69,7 +69,8 @@ const _dartKeywords = {
   'yield',
 };
 
-String dartTypeName(String raw) => _validIdentifier(ReCase(raw).pascalCase, fallback: 'GeneratedType');
+String dartTypeName(String raw) =>
+    _validIdentifier(ReCase(raw).pascalCase, fallback: 'GeneratedType');
 
 String dartFieldName(String raw) {
   final identifier = _validIdentifier(ReCase(raw).camelCase, fallback: 'field');
@@ -80,27 +81,37 @@ String dartEnumValueName(String raw) => dartFieldName(raw);
 
 String dartConverterBaseMethodName(ConverterDef converter) {
   final identifier = dartFieldName(_converterRawName(converter));
-  return identifier.startsWith('_') ? 'converter${identifier.substring(1)}' : identifier;
+  return identifier.startsWith('_')
+      ? 'converter${identifier.substring(1)}'
+      : identifier;
 }
 
-Map<ConverterDef, String> dartConverterMethodNames(Iterable<ConverterDef> converters) {
+Map<ConverterDef, String> dartConverterMethodNames(
+  Iterable<ConverterDef> converters,
+) {
   return _converterMethodNames(converters, dartConverterBaseMethodName);
 }
 
-String csharpTypeName(String raw) => _validIdentifier(ReCase(raw).pascalCase, fallback: 'GeneratedType');
+String csharpTypeName(String raw) =>
+    _validIdentifier(ReCase(raw).pascalCase, fallback: 'GeneratedType');
 
-String csharpPropertyName(String raw) => _validIdentifier(ReCase(raw).pascalCase, fallback: 'Property');
+String csharpPropertyName(String raw) =>
+    _validIdentifier(ReCase(raw).pascalCase, fallback: 'Property');
 
 String csharpEnumValueName(String raw) => csharpPropertyName(raw);
 
-String csharpConverterBaseMethodName(ConverterDef converter) => csharpTypeName(_converterRawName(converter));
+String csharpConverterBaseMethodName(ConverterDef converter) =>
+    csharpTypeName(_converterRawName(converter));
 
-Map<ConverterDef, String> csharpConverterMethodNames(Iterable<ConverterDef> converters) {
+Map<ConverterDef, String> csharpConverterMethodNames(
+  Iterable<ConverterDef> converters,
+) {
   return _converterMethodNames(converters, csharpConverterBaseMethodName);
 }
 
 String _converterRawName(ConverterDef converter) {
-  return converter.name ?? '${_converterTypeName(converter.from)}To${_converterTypeName(converter.to)}';
+  return converter.name ??
+      '${_converterTypeName(converter.from)}To${_converterTypeName(converter.to)}';
 }
 
 String _converterTypeName(TypeRef type) {

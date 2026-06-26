@@ -25,7 +25,12 @@ class _CSharpEmitter {
     buffer.writeln('#nullable enable');
     buffer.writeln();
 
-    final usings = <String>{'System', 'System.Collections.Generic', 'System.Linq', 'System.Text.Json'};
+    final usings = <String>{
+      'System',
+      'System.Collections.Generic',
+      'System.Linq',
+      'System.Text.Json',
+    };
     for (final converter in converters) {
       usings.addAll(converter.csharp.usings);
     }
@@ -60,7 +65,9 @@ class _CSharpEmitter {
   void _writeJsonHelper(StringBuffer buffer) {
     buffer.writeln('internal static class MappingJson');
     buffer.writeln('{');
-    buffer.writeln('    public static JsonElement? Optional(JsonElement json, string name)');
+    buffer.writeln(
+      '    public static JsonElement? Optional(JsonElement json, string name)',
+    );
     buffer.writeln('    {');
     buffer.writeln(
       '        return json.TryGetProperty(name, out var value) && '
@@ -78,12 +85,18 @@ class _CSharpEmitter {
     buffer.writeln('public static class MappingConverters');
     buffer.writeln('{');
     for (final converter in converters) {
-      final methodName = _converterMethodNames[converter] ?? csharpConverterBaseMethodName(converter);
+      final methodName =
+          _converterMethodNames[converter] ??
+          csharpConverterBaseMethodName(converter);
       buffer.writeln(
         '    public static ${_csharpType(converter.to)} $methodName(${_csharpType(converter.from)} source)',
       );
       buffer.writeln('    {');
-      _writeReturnExpression(buffer, indent: '    ', expression: converter.csharp.expression);
+      _writeReturnExpression(
+        buffer,
+        indent: '    ',
+        expression: converter.csharp.expression,
+      );
       buffer.writeln('    }');
       buffer.writeln();
     }
@@ -104,7 +117,9 @@ class _CSharpEmitter {
     buffer.writeln('public static class ${_enumHelperName(enumDef.name)}');
     buffer.writeln('{');
     if (resolved.enumHasStrings(enumDef)) {
-      buffer.writeln('    public static string ToStringValue(${csharpTypeName(enumDef.name)} value) => value switch');
+      buffer.writeln(
+        '    public static string ToStringValue(${csharpTypeName(enumDef.name)} value) => value switch',
+      );
       buffer.writeln('    {');
       for (final value in enumDef.values.values) {
         buffer.writeln(
@@ -112,11 +127,15 @@ class _CSharpEmitter {
           '${csharpStringLiteral(value.stringValue!)},',
         );
       }
-      buffer.writeln('        _ => throw new ArgumentOutOfRangeException(nameof(value)),');
+      buffer.writeln(
+        '        _ => throw new ArgumentOutOfRangeException(nameof(value)),',
+      );
       buffer.writeln('    };');
       buffer.writeln();
 
-      buffer.writeln('    public static ${csharpTypeName(enumDef.name)} FromStringValue(string value) => value switch');
+      buffer.writeln(
+        '    public static ${csharpTypeName(enumDef.name)} FromStringValue(string value) => value switch',
+      );
       buffer.writeln('    {');
       for (final value in enumDef.values.values) {
         buffer.writeln(
@@ -133,18 +152,24 @@ class _CSharpEmitter {
     }
 
     if (resolved.enumHasInts(enumDef)) {
-      buffer.writeln('    public static int ToIntValue(${csharpTypeName(enumDef.name)} value) => value switch');
+      buffer.writeln(
+        '    public static int ToIntValue(${csharpTypeName(enumDef.name)} value) => value switch',
+      );
       buffer.writeln('    {');
       for (final value in enumDef.values.values) {
         buffer.writeln(
           '        ${csharpTypeName(enumDef.name)}.${csharpEnumValueName(value.name)} => ${value.intValue},',
         );
       }
-      buffer.writeln('        _ => throw new ArgumentOutOfRangeException(nameof(value)),');
+      buffer.writeln(
+        '        _ => throw new ArgumentOutOfRangeException(nameof(value)),',
+      );
       buffer.writeln('    };');
       buffer.writeln();
 
-      buffer.writeln('    public static ${csharpTypeName(enumDef.name)} FromIntValue(int value) => value switch');
+      buffer.writeln(
+        '    public static ${csharpTypeName(enumDef.name)} FromIntValue(int value) => value switch',
+      );
       buffer.writeln('    {');
       for (final value in enumDef.values.values) {
         buffer.writeln(
@@ -188,20 +213,28 @@ class _CSharpEmitter {
       buffer.writeln('        };');
       buffer.writeln('    }');
       buffer.writeln();
-      buffer.writeln('    public string ToJson() => JsonSerializer.Serialize(ToJsonMap());');
+      buffer.writeln(
+        '    public string ToJson() => JsonSerializer.Serialize(ToJsonMap());',
+      );
       buffer.writeln();
-      buffer.writeln('    public static ${csharpTypeName(model.name)} FromJson(string json)');
+      buffer.writeln(
+        '    public static ${csharpTypeName(model.name)} FromJson(string json)',
+      );
       buffer.writeln('    {');
       buffer.writeln('        using var document = JsonDocument.Parse(json);');
       buffer.writeln('        return FromJsonElement(document.RootElement);');
       buffer.writeln('    }');
       buffer.writeln();
-      buffer.writeln('    public static ${csharpTypeName(model.name)} FromJsonElement(JsonElement json)');
+      buffer.writeln(
+        '    public static ${csharpTypeName(model.name)} FromJsonElement(JsonElement json)',
+      );
       buffer.writeln('    {');
       buffer.writeln('        return new ${csharpTypeName(model.name)}');
       buffer.writeln('        {');
       for (final field in model.fields.values) {
-        buffer.writeln('            ${csharpPropertyName(field.name)} = ${_fieldFromJsonExpression(field)},');
+        buffer.writeln(
+          '            ${csharpPropertyName(field.name)} = ${_fieldFromJsonExpression(field)},',
+        );
       }
       buffer.writeln('        };');
       buffer.writeln('    }');
@@ -215,7 +248,9 @@ class _CSharpEmitter {
     buffer.writeln('public static class MappingExtensions');
     buffer.writeln('{');
     for (final mapping in resolved.schema.mappings) {
-      buffer.writeln('    public static ${csharpTypeName(mapping.to)} ${_mappingMethodName(mapping.to)}(');
+      buffer.writeln(
+        '    public static ${csharpTypeName(mapping.to)} ${_mappingMethodName(mapping.to)}(',
+      );
       buffer.writeln('        this ${csharpTypeName(mapping.from)} source)');
       buffer.writeln('    {');
       buffer.writeln('        return new ${csharpTypeName(mapping.to)}');
@@ -233,7 +268,11 @@ class _CSharpEmitter {
     buffer.writeln();
   }
 
-  void _writeReturnExpression(StringBuffer buffer, {required String indent, required String expression}) {
+  void _writeReturnExpression(
+    StringBuffer buffer, {
+    required String indent,
+    required String expression,
+  }) {
     final trimmed = expression.trim();
     if (!trimmed.contains('\n')) {
       buffer.writeln('$indent    return ($trimmed);');
@@ -249,15 +288,21 @@ class _CSharpEmitter {
 
   String _assignmentExpression(ResolvedFieldAssignment assignment) {
     return switch (assignment) {
-      ResolvedConstantFieldAssignment(:final constValue) => _csharpConstant(constValue),
-      ResolvedSourceFieldAssignment(:final sourceField, :final conversion) => _convertExpression(
-        conversion,
-        'source.${csharpPropertyName(sourceField.name)}',
+      ResolvedConstantFieldAssignment(:final constValue) => _csharpConstant(
+        constValue,
       ),
+      ResolvedSourceFieldAssignment(:final sourceField, :final conversion) =>
+        _convertExpression(
+          conversion,
+          'source.${csharpPropertyName(sourceField.name)}',
+        ),
     };
   }
 
-  String _convertExpression(ConversionPlan conversion, String sourceExpression) {
+  String _convertExpression(
+    ConversionPlan conversion,
+    String sourceExpression,
+  ) {
     return switch (conversion) {
       IdentityConversionPlan() => sourceExpression,
       NullableConversionPlan(:final from, :final inner) =>
@@ -271,14 +316,14 @@ class _CSharpEmitter {
         'decimal' => '(decimal)$sourceExpression',
         _ => sourceExpression,
       },
-      EnumScalarConversionPlan(:final enumName, :final kind, :final fromEnum) => _enumScalarExpression(
-        enumName,
-        kind,
-        fromEnum,
+      EnumScalarConversionPlan(:final enumName, :final kind, :final fromEnum) =>
+        _enumScalarExpression(enumName, kind, fromEnum, sourceExpression),
+      ModelMappingConversionPlan(:final mapping) =>
+        '$sourceExpression.${_mappingMethodName(mapping.to)}()',
+      ConverterConversionPlan(:final converter) => _converterCall(
+        converter,
         sourceExpression,
       ),
-      ModelMappingConversionPlan(:final mapping) => '$sourceExpression.${_mappingMethodName(mapping.to)}()',
-      ConverterConversionPlan(:final converter) => _converterCall(converter, sourceExpression),
     };
   }
 
@@ -339,7 +384,9 @@ class _CSharpEmitter {
   }
 
   String _csharpType(TypeRef type) {
-    final base = type.isList ? 'List<${_csharpType(type.item!)}>' : _csharpBaseType(type.name);
+    final base = type.isList
+        ? 'List<${_csharpType(type.item!)}>'
+        : _csharpBaseType(type.name);
     return type.nullable ? '$base?' : base;
   }
 
@@ -411,20 +458,32 @@ class _CSharpEmitter {
   }
 
   String _converterCall(ConverterDef converter, String sourceExpression) {
-    final methodName = _converterMethodNames[converter] ?? csharpConverterBaseMethodName(converter);
+    final methodName =
+        _converterMethodNames[converter] ??
+        csharpConverterBaseMethodName(converter);
     return 'MappingConverters.$methodName($sourceExpression)';
   }
 
-  String _enumScalarExpression(String enumName, EnumScalarKind kind, bool fromEnum, String sourceExpression) {
+  String _enumScalarExpression(
+    String enumName,
+    EnumScalarKind kind,
+    bool fromEnum,
+    String sourceExpression,
+  ) {
     return switch ((kind, fromEnum)) {
-      (EnumScalarKind.string, true) => '${_enumHelperName(enumName)}.ToStringValue($sourceExpression)',
-      (EnumScalarKind.string, false) => '${_enumHelperName(enumName)}.FromStringValue($sourceExpression)',
-      (EnumScalarKind.int, true) => '${_enumHelperName(enumName)}.ToIntValue($sourceExpression)',
-      (EnumScalarKind.int, false) => '${_enumHelperName(enumName)}.FromIntValue($sourceExpression)',
+      (EnumScalarKind.string, true) =>
+        '${_enumHelperName(enumName)}.ToStringValue($sourceExpression)',
+      (EnumScalarKind.string, false) =>
+        '${_enumHelperName(enumName)}.FromStringValue($sourceExpression)',
+      (EnumScalarKind.int, true) =>
+        '${_enumHelperName(enumName)}.ToIntValue($sourceExpression)',
+      (EnumScalarKind.int, false) =>
+        '${_enumHelperName(enumName)}.FromIntValue($sourceExpression)',
     };
   }
 
-  String _enumHelperName(String enumName) => '${csharpTypeName(enumName)}Conversions';
+  String _enumHelperName(String enumName) =>
+      '${csharpTypeName(enumName)}Conversions';
 
   String _mappingMethodName(String to) => 'To${csharpTypeName(to)}';
 
