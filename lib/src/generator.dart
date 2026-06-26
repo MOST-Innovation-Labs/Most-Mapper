@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
+
 import 'csharp_emitter.dart';
 import 'dart_emitter.dart';
 import 'parser.dart';
@@ -52,16 +54,17 @@ class GenerationResult {
 GenerationResult generate(GeneratorOptions options) {
   _validateOptions(options);
 
-  final mappingFile = File(options.mappingPath);
+  final mappingPath = _adaptPath(options.mappingPath);
+  final mappingFile = File(mappingPath);
   if (!mappingFile.existsSync()) {
     throw MapperException(
-      'Mapping file does not exist: ${options.mappingPath}',
+      'Mapping file does not exist: $mappingPath',
     );
   }
 
   final schema = parseMappingYaml(
     mappingFile.readAsStringSync(),
-    sourceName: options.mappingPath,
+    sourceName: mappingPath,
   );
   final resolved = ResolvedSchema(schema);
   resolved.validate();
@@ -70,7 +73,7 @@ GenerationResult generate(GeneratorOptions options) {
   if (options.dartOutDir != null) {
     outputs.add(
       _OutputFile(
-        options.dartOutDir!,
+        _adaptPath(options.dartOutDir!),
         options.dartFileName,
         emitDart(resolved),
       ),
@@ -79,7 +82,7 @@ GenerationResult generate(GeneratorOptions options) {
   if (options.csharpOutDir != null) {
     outputs.add(
       _OutputFile(
-        options.csharpOutDir!,
+        _adaptPath(options.csharpOutDir!),
         options.csharpFileName,
         emitCSharp(resolved),
       ),
@@ -128,6 +131,14 @@ void _validateFileName(String fileName, String optionName) {
   }
 }
 
+String _adaptPath(String path) {
+  if (path.isEmpty) {
+    return path;
+  }
+  final adapted = path.replaceAll(Platform.isWindows ? '/' : r'\', p.separator);
+  return p.normalize(adapted);
+}
+
 class _OutputFile {
   _OutputFile(this.directory, this.fileName, this.contents);
 
@@ -135,8 +146,7 @@ class _OutputFile {
   final String fileName;
   final String contents;
 
-  String get path =>
-      '${directory.endsWith('/') ? directory.substring(0, directory.length - 1) : directory}/$fileName';
+  String get path => p.join(directory, fileName);
 
   void format() {
     if (fileName.endsWith('.dart')) {
@@ -164,7 +174,7 @@ void _formatCSharp(String path) {
     'most_mapper_dotnet_format_',
   );
   try {
-    final project = File('${tempDir.path}/MapperFormat.csproj');
+    final project = File(p.join(tempDir.path, 'MapperFormat.csproj'));
     project.writeAsStringSync('''
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
@@ -197,7 +207,7 @@ void _validateCSharp(String path) {
     'most_mapper_dotnet_validate_',
   );
   try {
-    final project = File('${tempDir.path}/MapperValidate.csproj');
+    final project = File(p.join(tempDir.path, 'MapperValidate.csproj'));
     project.writeAsStringSync('''
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>

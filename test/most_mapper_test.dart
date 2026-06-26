@@ -5,6 +5,7 @@ import 'package:most_mapper/src/csharp_emitter.dart';
 import 'package:most_mapper/src/dart_emitter.dart';
 import 'package:most_mapper/src/resolver.dart';
 import 'package:most_mapper/src/type_parser.dart';
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 void main() {
@@ -441,25 +442,65 @@ mappings:
   test('writes requested output file names', () {
     final temp = Directory.systemTemp.createTempSync('most_mapper_test_');
     try {
-      final mapping = File('${temp.path}/mapping.yaml')
+      final mapping = File(p.join(temp.path, 'mapping.yaml'))
         ..writeAsStringSync(_sampleYaml);
       final result = generate(
         GeneratorOptions(
           mappingPath: mapping.path,
-          dartOutDir: '${temp.path}/dart',
+          dartOutDir: p.join(temp.path, 'dart') + p.separator,
           dartFileName: 'custom.dart',
-          csharpOutDir: '${temp.path}/csharp',
+          csharpOutDir: p.join(temp.path, 'csharp') + p.separator,
           csharpFileName: 'Custom.cs',
         ),
       );
 
       expect(result.writtenFiles, hasLength(2));
-      expect(File('${temp.path}/dart/custom.dart').existsSync(), isTrue);
-      expect(File('${temp.path}/csharp/Custom.cs').existsSync(), isTrue);
+      expect(
+        File(p.join(temp.path, 'dart', 'custom.dart')).existsSync(),
+        isTrue,
+      );
+      expect(
+        File(p.join(temp.path, 'csharp', 'Custom.cs')).existsSync(),
+        isTrue,
+      );
     } finally {
       temp.deleteSync(recursive: true);
     }
   });
+
+  test('accepts paths with non-native separators', () {
+    final temp = Directory.systemTemp.createTempSync('most_mapper_test_');
+    try {
+      final mappingPath = p.join(temp.path, 'mapping.yaml');
+      File(mappingPath).writeAsStringSync(_sampleYaml);
+
+      final result = generate(
+        GeneratorOptions(
+          mappingPath: _withNonNativeSeparators(mappingPath),
+          dartOutDir: _withNonNativeSeparators(p.join(temp.path, 'dart')),
+          dartFileName: 'custom.dart',
+          csharpOutDir: _withNonNativeSeparators(p.join(temp.path, 'csharp')),
+          csharpFileName: 'Custom.cs',
+        ),
+      );
+
+      expect(result.writtenFiles, hasLength(2));
+      expect(
+        File(p.join(temp.path, 'dart', 'custom.dart')).existsSync(),
+        isTrue,
+      );
+      expect(
+        File(p.join(temp.path, 'csharp', 'Custom.cs')).existsSync(),
+        isTrue,
+      );
+    } finally {
+      temp.deleteSync(recursive: true);
+    }
+  });
+}
+
+String _withNonNativeSeparators(String path) {
+  return Platform.isWindows ? path.replaceAll(r'\', '/') : path.replaceAll('/', r'\');
 }
 
 ResolvedSchema _resolvedSample() {
