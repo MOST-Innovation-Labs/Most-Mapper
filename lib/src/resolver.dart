@@ -357,18 +357,17 @@ class ResolvedSchema {
   ConversionPlan? _conversionPlanForNonNull(
     TypeRef from,
     TypeRef to, {
-    String? converterName,
+    final String? converterName,
   }) {
     if (converterName == 'default') {
       final converter = defaultConverterFor(from, to);
-      if (converter != null) {
-        return ConverterConversionPlan(
-          from: from,
-          to: to,
-          converter: converter,
-        );
+      if (converter == null) {
+        return null;
       }
-    } else if (converterName != null) {
+      return ConverterConversionPlan(from: from, to: to, converter: converter);
+    }
+
+    if (converterName != null) {
       final converter = converterByName(converterName);
       if (converter == null ||
           !converter.from.sameShape(from, includeNullability: false) ||
