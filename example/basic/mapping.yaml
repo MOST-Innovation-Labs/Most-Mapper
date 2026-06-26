@@ -1,0 +1,126 @@
+models:
+  Measurement:
+    doc: Sample scaled numeric value.
+    json: true
+    fields:
+      code: String
+      scale: int
+      value: int
+
+  OrderStatus:
+    enum:
+      pending: { string: pending, int: 0 }
+      captured: { string: captured, int: 1 }
+      failed: { string: failed, int: 2 }
+
+  ModelA:
+    doc: Domain model.
+    json: true
+    fields:
+      JsonFieldName: { type: String, nullable: true }
+      reading: Measurement
+      status: OrderStatus
+      bs: List<ModelB>
+      createdAt: DateTime?
+
+  ModelAWire:
+    doc: Wire model.
+    json: true
+    fields:
+      Id: String?
+      reading: decimal
+      status: String
+      statusCode: int
+      bs: List<ModelBWire>
+      createdAt: String?
+      SomeField: String?
+
+  ModelB:
+    doc: Domain child model.
+    json: true
+    fields:
+      Id: String
+      Datetime: DateTime
+
+  ModelBWire:
+    doc: Wire child model.
+    json: true
+    fields:
+      Id: String
+      Datetime: String
+
+converters:
+  - from: Measurement
+    to: decimal
+    dart:
+      imports: ["dart:math"]
+      expression: "source.value / pow(10, source.scale)"
+    csharp:
+      usings: ["System"]
+      expression: "(decimal)source.Value / (decimal)Math.Pow(10, source.Scale)"
+
+  - name: offsetDateTimeToString
+    from: DateTime
+    to: String
+    dart:
+      expression: |
+        (() {
+          String two(int value) => value.toString().padLeft(2, '0');
+          final offset = source.timeZoneOffset;
+          final sign = offset.isNegative ? '-' : '+';
+          final absoluteOffset = offset.abs();
+          return '${source.year.toString().padLeft(4, '0')}-${two(source.month)}-${two(source.day)}T${two(source.hour)}:${two(source.minute)}:${two(source.second)}$sign${two(absoluteOffset.inHours)}:${two(absoluteOffset.inMinutes.remainder(60))}';
+        })()
+    csharp:
+      usings: ["System", "System.Globalization"]
+      expression: |
+        new DateTimeOffset(source).ToString("yyyy-MM-dd'T'HH:mm:sszzz", CultureInfo.InvariantCulture)
+
+  - name: offsetStringToDateTime
+    from: String
+    to: DateTime
+    dart:
+      expression: |
+        (() {
+          final match = RegExp(r'^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})([+-])(\d{2}):(\d{2})$').firstMatch(source);
+          if (match == null) {
+            throw FormatException('Expected yyyy-MM-ddTHH:mm:ss+XX:XX', source);
+          }
+          final withoutOffsetUtc = DateTime.parse('${match.group(1)}Z');
+          final offset = Duration(
+            hours: int.parse(match.group(3)!),
+            minutes: int.parse(match.group(4)!),
+          );
+          return match.group(2) == '+'
+              ? withoutOffsetUtc.subtract(offset)
+              : withoutOffsetUtc.add(offset);
+        })()
+    csharp:
+      usings: ["System", "System.Globalization"]
+      expression: |
+        DateTimeOffset.ParseExact(
+            source,
+            "yyyy-MM-dd'T'HH:mm:sszzz",
+            CultureInfo.InvariantCulture
+        ).UtcDateTime
+
+mappings:
+  - from: ModelB
+    to: ModelBWire
+    fields:
+      Datetime: { from: Datetime, converter: offsetDateTimeToString }
+
+  - from: ModelBWire
+    to: ModelB
+    fields:
+      Datetime: { from: Datetime, converter: offsetStringToDateTime }
+
+  - from: ModelA
+    to: ModelAWire
+    fields:
+      Id: { from: JsonFieldName }
+      reading: { from: reading }
+      status: { from: status }
+      statusCode: { from: status }
+      createdAt: { from: createdAt, converter: default }
+      SomeField: { const: null }
