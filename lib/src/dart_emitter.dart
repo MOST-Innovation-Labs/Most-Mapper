@@ -204,17 +204,40 @@ class _DartEmitter {
   }
 
   void _writeMapping(StringBuffer buffer, MappingDef mapping) {
+    final assignments = resolved.mappingAssignments(mapping);
+    final parameterAssignments = assignments
+        .whereType<ResolvedParameterFieldAssignment>()
+        .toList();
+    final sourceLocal =
+        parameterAssignments.any(
+          (assignment) =>
+              dartFieldName(assignment.targetField.name) == 'source',
+        )
+        ? 'mappingSource'
+        : 'source';
     buffer.writeln(
       'extension ${_mappingExtensionName(mapping.from, mapping.to)} on ${dartTypeName(mapping.from)} {',
     );
-    buffer.writeln(
-      '  ${dartTypeName(mapping.to)} ${_mappingMethodName(mapping.to)}() {',
-    );
-    buffer.writeln('    final source = this;');
-    buffer.writeln('    return ${dartTypeName(mapping.to)}(');
-    for (final assignment in resolved.mappingAssignments(mapping)) {
+    if (parameterAssignments.isEmpty) {
       buffer.writeln(
-        '      ${dartFieldName(assignment.targetField.name)}: ${_assignmentExpression(assignment)},',
+        '  ${dartTypeName(mapping.to)} ${_mappingMethodName(mapping.to)}() {',
+      );
+    } else {
+      buffer.writeln(
+        '  ${dartTypeName(mapping.to)} ${_mappingMethodName(mapping.to)}({',
+      );
+      for (final assignment in parameterAssignments) {
+        buffer.writeln(
+          '    required ${_dartType(assignment.parameterType)} ${dartFieldName(assignment.targetField.name)},',
+        );
+      }
+      buffer.writeln('  }) {');
+    }
+    buffer.writeln('    final $sourceLocal = this;');
+    buffer.writeln('    return ${dartTypeName(mapping.to)}(');
+    for (final assignment in assignments) {
+      buffer.writeln(
+        '      ${dartFieldName(assignment.targetField.name)}: ${_assignmentExpression(assignment, sourceLocal)},',
       );
     }
     buffer.writeln('    );');
@@ -223,7 +246,10 @@ class _DartEmitter {
     buffer.writeln();
   }
 
-  String _assignmentExpression(ResolvedFieldAssignment assignment) {
+  String _assignmentExpression(
+    ResolvedFieldAssignment assignment,
+    String sourceLocal,
+  ) {
     return switch (assignment) {
       ResolvedConstantFieldAssignment(:final constValue, :final targetField) =>
         constValue is int &&
@@ -234,8 +260,10 @@ class _DartEmitter {
       ResolvedSourceFieldAssignment(:final sourceField, :final conversion) =>
         _convertExpression(
           conversion,
-          'source.${dartFieldName(sourceField.name)}',
+          '$sourceLocal.${dartFieldName(sourceField.name)}',
         ),
+      ResolvedParameterFieldAssignment(:final targetField, :final conversion) =>
+        _convertExpression(conversion, dartFieldName(targetField.name)),
     };
   }
 

@@ -200,23 +200,46 @@ Map<String, FieldMapping> _parseMappingFields(Object? value, int mappingIndex) {
     );
     final hasFrom = body.containsKey('from');
     final hasConst = body.containsKey('const');
-    if (hasFrom == hasConst) {
+    final hasParameter = body.containsKey('parameter');
+    final assignmentCount = [
+      hasFrom,
+      hasConst,
+      hasParameter,
+    ].where((value) => value).length;
+    if (assignmentCount != 1) {
       throw MapperException(
-        'mappings[$mappingIndex].fields.$targetName must contain exactly one of from or const.',
+        'mappings[$mappingIndex].fields.$targetName must contain exactly one of from, const, or parameter.',
       );
     }
-    fields[targetName] = hasFrom
-        ? FieldMapping.from(
-            _requiredString(
-              body['from'],
-              'mappings[$mappingIndex].fields.$targetName.from',
-            ),
-            converterName: _optionalString(
-              body['converter'],
-              'mappings[$mappingIndex].fields.$targetName.converter',
-            ),
-          )
-        : FieldMapping.constant(body['const']);
+    if (hasFrom) {
+      fields[targetName] = FieldMapping.from(
+        _requiredString(
+          body['from'],
+          'mappings[$mappingIndex].fields.$targetName.from',
+        ),
+        converterName: _optionalString(
+          body['converter'],
+          'mappings[$mappingIndex].fields.$targetName.converter',
+        ),
+      );
+      continue;
+    }
+    if (hasParameter) {
+      fields[targetName] = FieldMapping.parameter(
+        parseType(
+          _requiredString(
+            body['parameter'],
+            'mappings[$mappingIndex].fields.$targetName.parameter',
+          ),
+        ),
+        converterName: _optionalString(
+          body['converter'],
+          'mappings[$mappingIndex].fields.$targetName.converter',
+        ),
+      );
+      continue;
+    }
+    fields[targetName] = FieldMapping.constant(body['const']);
   }
   return fields;
 }

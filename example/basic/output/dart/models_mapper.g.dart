@@ -26,20 +26,13 @@ class MappingConverters {
 
   static DateTime offsetStringToDateTime(String source) {
     return ((() {
-      final match = RegExp(
-        r'^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})([+-])(\d{2}):(\d{2})$',
-      ).firstMatch(source);
+      final match = RegExp(r'^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})([+-])(\d{2}):(\d{2})$').firstMatch(source);
       if (match == null) {
         throw FormatException('Expected yyyy-MM-ddTHH:mm:ss+XX:XX', source);
       }
       final withoutOffsetUtc = DateTime.parse('${match.group(1)}Z');
-      final offset = Duration(
-        hours: int.parse(match.group(3)!),
-        minutes: int.parse(match.group(4)!),
-      );
-      return match.group(2) == '+'
-          ? withoutOffsetUtc.subtract(offset)
-          : withoutOffsetUtc.add(offset);
+      final offset = Duration(hours: int.parse(match.group(3)!), minutes: int.parse(match.group(4)!));
+      return match.group(2) == '+' ? withoutOffsetUtc.subtract(offset) : withoutOffsetUtc.add(offset);
     })());
   }
 }
@@ -96,27 +89,16 @@ OrderStatus orderStatusFromInt(int value) {
 
 /// Sample scaled numeric value.
 class Measurement {
-  const Measurement({
-    required this.code,
-    required this.scale,
-    required this.value,
-  });
+  const Measurement({required this.code, required this.scale, required this.value});
 
   final String code;
   final int scale;
   final int value;
 
-  Map<String, dynamic> toJson() => <String, dynamic>{
-    'code': code,
-    'scale': scale,
-    'value': value,
-  };
+  Map<String, dynamic> toJson() => <String, dynamic>{'code': code, 'scale': scale, 'value': value};
 
-  factory Measurement.fromJson(Map<String, dynamic> json) => Measurement(
-    code: json['code'] as String,
-    scale: json['scale'] as int,
-    value: json['value'] as int,
-  );
+  factory Measurement.fromJson(Map<String, dynamic> json) =>
+      Measurement(code: json['code'] as String, scale: json['scale'] as int, value: json['value'] as int);
 }
 
 /// Domain model.
@@ -140,23 +122,15 @@ class ModelA {
     'reading': reading.toJson(),
     'status': orderStatusToString(status),
     'bs': bs.map((item) => item.toJson()).toList(),
-    'createdAt': createdAt == null
-        ? null
-        : MappingConverters.offsetDateTimeToString(createdAt!),
+    'createdAt': createdAt == null ? null : MappingConverters.offsetDateTimeToString(createdAt!),
   };
 
   factory ModelA.fromJson(Map<String, dynamic> json) => ModelA(
-    jsonFieldName: json['JsonFieldName'] == null
-        ? null
-        : json['JsonFieldName'] as String,
+    jsonFieldName: json['JsonFieldName'] == null ? null : json['JsonFieldName'] as String,
     reading: Measurement.fromJson(json['reading'] as Map<String, dynamic>),
     status: orderStatusFromString(json['status'] as String),
-    bs: (json['bs'] as List<dynamic>)
-        .map((item) => ModelB.fromJson(item as Map<String, dynamic>))
-        .toList(),
-    createdAt: json['createdAt'] == null
-        ? null
-        : MappingConverters.offsetStringToDateTime(json['createdAt'] as String),
+    bs: (json['bs'] as List<dynamic>).map((item) => ModelB.fromJson(item as Map<String, dynamic>)).toList(),
+    createdAt: json['createdAt'] == null ? null : MappingConverters.offsetStringToDateTime(json['createdAt'] as String),
   );
 }
 
@@ -167,6 +141,7 @@ class ModelAWire {
     required this.reading,
     required this.status,
     required this.statusCode,
+    required this.externalStatus,
     required this.bs,
     required this.createdAt,
     required this.someField,
@@ -176,6 +151,7 @@ class ModelAWire {
   final double reading;
   final String status;
   final int statusCode;
+  final String externalStatus;
   final List<ModelBWire> bs;
   final String? createdAt;
   final String? someField;
@@ -185,6 +161,7 @@ class ModelAWire {
     'reading': reading,
     'status': status,
     'statusCode': statusCode,
+    'externalStatus': externalStatus,
     'bs': bs.map((item) => item.toJson()).toList(),
     'createdAt': createdAt == null ? null : createdAt!,
     'SomeField': someField == null ? null : someField!,
@@ -195,9 +172,8 @@ class ModelAWire {
     reading: (json['reading'] as num).toDouble(),
     status: json['status'] as String,
     statusCode: json['statusCode'] as int,
-    bs: (json['bs'] as List<dynamic>)
-        .map((item) => ModelBWire.fromJson(item as Map<String, dynamic>))
-        .toList(),
+    externalStatus: json['externalStatus'] as String,
+    bs: (json['bs'] as List<dynamic>).map((item) => ModelBWire.fromJson(item as Map<String, dynamic>)).toList(),
     createdAt: json['createdAt'] == null ? null : json['createdAt'] as String,
     someField: json['SomeField'] == null ? null : json['SomeField'] as String,
   );
@@ -215,12 +191,8 @@ class ModelB {
     'Datetime': MappingConverters.offsetDateTimeToString(datetime),
   };
 
-  factory ModelB.fromJson(Map<String, dynamic> json) => ModelB(
-    id: json['Id'] as String,
-    datetime: MappingConverters.offsetStringToDateTime(
-      json['Datetime'] as String,
-    ),
-  );
+  factory ModelB.fromJson(Map<String, dynamic> json) =>
+      ModelB(id: json['Id'] as String, datetime: MappingConverters.offsetStringToDateTime(json['Datetime'] as String));
 }
 
 /// Wire child model.
@@ -230,49 +202,37 @@ class ModelBWire {
   final String id;
   final String datetime;
 
-  Map<String, dynamic> toJson() => <String, dynamic>{
-    'Id': id,
-    'Datetime': datetime,
-  };
+  Map<String, dynamic> toJson() => <String, dynamic>{'Id': id, 'Datetime': datetime};
 
-  factory ModelBWire.fromJson(Map<String, dynamic> json) => ModelBWire(
-    id: json['Id'] as String,
-    datetime: json['Datetime'] as String,
-  );
+  factory ModelBWire.fromJson(Map<String, dynamic> json) =>
+      ModelBWire(id: json['Id'] as String, datetime: json['Datetime'] as String);
 }
 
 extension ModelBToModelBWire on ModelB {
   ModelBWire toModelBWire() {
     final source = this;
-    return ModelBWire(
-      id: source.id,
-      datetime: MappingConverters.offsetDateTimeToString(source.datetime),
-    );
+    return ModelBWire(id: source.id, datetime: MappingConverters.offsetDateTimeToString(source.datetime));
   }
 }
 
 extension ModelBWireToModelB on ModelBWire {
   ModelB toModelB() {
     final source = this;
-    return ModelB(
-      id: source.id,
-      datetime: MappingConverters.offsetStringToDateTime(source.datetime),
-    );
+    return ModelB(id: source.id, datetime: MappingConverters.offsetStringToDateTime(source.datetime));
   }
 }
 
 extension ModelAToModelAWire on ModelA {
-  ModelAWire toModelAWire() {
+  ModelAWire toModelAWire({required OrderStatus externalStatus}) {
     final source = this;
     return ModelAWire(
       id: source.jsonFieldName,
       reading: MappingConverters.measurementToDecimal(source.reading),
       status: orderStatusToString(source.status),
       statusCode: orderStatusToInt(source.status),
+      externalStatus: orderStatusToString(externalStatus),
       bs: source.bs.map((item) => item.toModelBWire()).toList(),
-      createdAt: source.createdAt == null
-          ? null
-          : MappingConverters.dateTimeToString(source.createdAt!),
+      createdAt: source.createdAt == null ? null : MappingConverters.dateTimeToString(source.createdAt!),
       someField: null,
     );
   }

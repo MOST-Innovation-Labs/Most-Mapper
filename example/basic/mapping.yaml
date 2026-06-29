@@ -31,6 +31,7 @@ models:
       reading: decimal
       status: String
       statusCode: int
+      externalStatus: String
       bs: List<ModelBWire>
       createdAt: String?
       SomeField: String?
@@ -122,5 +123,6 @@ mappings:
       reading: { from: reading }
       status: { from: status }
       statusCode: { from: status }
+      externalStatus: { parameter: OrderStatus }
       createdAt: { from: createdAt, converter: default }
       SomeField: { const: null }

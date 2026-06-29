@@ -136,6 +136,17 @@ class ResolvedSourceFieldAssignment extends ResolvedFieldAssignment {
   final ConversionPlan conversion;
 }
 
+class ResolvedParameterFieldAssignment extends ResolvedFieldAssignment {
+  const ResolvedParameterFieldAssignment({
+    required super.targetField,
+    required this.parameterType,
+    required this.conversion,
+  });
+
+  final TypeRef parameterType;
+  final ConversionPlan conversion;
+}
+
 class ResolvedConstantFieldAssignment extends ResolvedFieldAssignment {
   const ResolvedConstantFieldAssignment({
     required super.targetField,
@@ -246,8 +257,11 @@ class ResolvedSchema {
     }
     for (final mapping in schema.mappings) {
       for (final assignment in mappingAssignments(mapping)) {
-        if (assignment case ResolvedSourceFieldAssignment(:final conversion)) {
-          used.addAll(conversion.usedConverters);
+        switch (assignment) {
+          case ResolvedSourceFieldAssignment(:final conversion):
+          case ResolvedParameterFieldAssignment(:final conversion):
+            used.addAll(conversion.usedConverters);
+          case ResolvedConstantFieldAssignment():
         }
       }
     }
@@ -302,6 +316,17 @@ class ResolvedSchema {
       return ResolvedConstantFieldAssignment(
         targetField: targetField,
         constValue: fieldMapping.constValue,
+      );
+    }
+    if (fieldMapping.parameterType case final TypeRef parameterType) {
+      return ResolvedParameterFieldAssignment(
+        targetField: targetField,
+        parameterType: parameterType,
+        conversion: conversionPlanFor(
+          parameterType,
+          targetField.type,
+          converterName: fieldMapping.converterName,
+        )!,
       );
     }
 
@@ -436,7 +461,7 @@ class ResolvedSchema {
     }
     if (isDataModel(from.name) && isDataModel(to.name)) {
       final mapping = mappingFor(from, to);
-      if (mapping != null) {
+      if (mapping != null && !mappingHasParameters(mapping)) {
         return ModelMappingConversionPlan(from: from, to: to, mapping: mapping);
       }
     }
@@ -469,6 +494,12 @@ class ResolvedSchema {
     if (errors.isNotEmpty) {
       throw MapperException(errors.join('\n'));
     }
+  }
+
+  bool mappingHasParameters(MappingDef mapping) {
+    return mapping.fields.values.any(
+      (fieldMapping) => fieldMapping.parameterType != null,
+    );
   }
 
   void _validateDataModel(DataModelDef model, List<String> errors) {
@@ -597,6 +628,32 @@ class ResolvedSchema {
           entry.key,
           errors,
         );
+        continue;
+      }
+      if (fieldMapping.parameterType case final TypeRef parameterType) {
+        _validateType(
+          parameterType,
+          'mappings ${mapping.from}->${mapping.to}.${targetField.name} parameter type',
+          errors,
+        );
+        if (fieldMapping.converterName case final String converterName
+            when converterName != 'default') {
+          _validateExplicitConverter(
+            converterName,
+            parameterType,
+            targetField.type,
+            mapping,
+            targetField.name,
+            errors,
+          );
+          continue;
+        }
+        if (!canConvert(parameterType, targetField.type)) {
+          errors.add(
+            'Cannot map parameter ${targetField.name} (${parameterType}) to '
+            '${mapping.to}.${targetField.name} (${targetField.type}).',
+          );
+        }
         continue;
       }
       final sourceField = from.fields[fieldMapping.fromField];

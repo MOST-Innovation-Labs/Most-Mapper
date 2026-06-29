@@ -60,11 +60,12 @@ C# generation requires the .NET SDK because the generated `.cs` file is passed t
 - Converter `name` is optional. Use a name only when a mapping must select a specific non-default converter.
 - Field mappings can use `{ from: SourceField, converter: converterName }` to force a named converter, or
   `{ from: SourceField, converter: default }` to force a built-in default converter when available.
+- Field mappings can use `{ parameter: Type }` to add a required parameter to the generated mapping method.
 - `DateTime` has default `DateTime -> String` and `String -> DateTime` converters using UTC ISO text like
   `2026-06-24T07:19:06Z`.
 - Multiline converter expressions are supported with YAML block strings.
 - `mappings` generate typed extension methods on source models.
-- Mapping fields support `{ from: SourceField }`, `{ const: null }`, and scalar constants.
+- Mapping fields support `{ from: SourceField }`, `{ parameter: Type }`, `{ const: null }`, and scalar constants.
 - Mapping field names are case-sensitive YAML keys.
 
 ## Data Types
@@ -87,6 +88,8 @@ C# generation requires the .NET SDK because the generated `.cs` file is passed t
 - Default mapping assigns target fields from source fields with the same YAML key when the value is compatible.
 - Compatible means identical, numeric-castable, enum-scalar convertible, model-mappable, list-compatible, or converter-backed.
 - Every target field must be assigned by default mapping or an explicit mapping entry.
+- Parameter mapping keys are both the target field name and the generated parameter name.
+- Parameter mappings use the same conversion and converter resolution as source-field mappings.
 - `const: null` is only valid for nullable target fields.
 - Scalar constants are validated against the target field type.
 - The generator fails before writing output if validation fails.

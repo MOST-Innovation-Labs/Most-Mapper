@@ -178,6 +178,7 @@ public class ModelAWire
     public decimal Reading { get; set; }
     public string Status { get; set; } = "";
     public int StatusCode { get; set; }
+    public string ExternalStatus { get; set; } = "";
     public List<ModelBWire> Bs { get; set; } = new List<ModelBWire>();
     public string? CreatedAt { get; set; }
     public string? SomeField { get; set; }
@@ -190,6 +191,7 @@ public class ModelAWire
             ["reading"] = Reading,
             ["status"] = Status,
             ["statusCode"] = StatusCode,
+            ["externalStatus"] = ExternalStatus,
             ["bs"] = Bs.Select(item => item.ToJsonMap()).ToList(),
             ["createdAt"] = CreatedAt == null ? null : CreatedAt,
             ["SomeField"] = SomeField == null ? null : SomeField,
@@ -212,6 +214,7 @@ public class ModelAWire
             Reading = json.GetProperty("reading").GetDecimal(),
             Status = json.GetProperty("status").GetString()!,
             StatusCode = json.GetProperty("statusCode").GetInt32(),
+            ExternalStatus = json.GetProperty("externalStatus").GetString()!,
             Bs = json.GetProperty("bs").EnumerateArray().Select(item => ModelBWire.FromJsonElement(item)).ToList(),
             CreatedAt = MappingJson.Optional(json, "createdAt") is JsonElement createdAtJson ? createdAtJson.GetString()! : null,
             SomeField = MappingJson.Optional(json, "SomeField") is JsonElement someFieldJson ? someFieldJson.GetString()! : null,
@@ -312,7 +315,8 @@ public static class MappingExtensions
     }
 
     public static ModelAWire ToModelAWire(
-        this ModelA source)
+        this ModelA source,
+        OrderStatus externalStatus)
     {
         return new ModelAWire
         {
@@ -320,6 +324,7 @@ public static class MappingExtensions
             Reading = MappingConverters.MeasurementToDecimal(source.Reading),
             Status = OrderStatusConversions.ToStringValue(source.Status),
             StatusCode = OrderStatusConversions.ToIntValue(source.Status),
+            ExternalStatus = OrderStatusConversions.ToStringValue(externalStatus),
             Bs = source.Bs.Select(item => item.ToModelBWire()).ToList(),
             CreatedAt = source.CreatedAt == null ? null : MappingConverters.DateTimeToString(source.CreatedAt.Value),
             SomeField = null,

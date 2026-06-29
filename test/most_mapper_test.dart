@@ -253,6 +253,160 @@ mappings:
     );
   });
 
+  test('supports parameter mapping fields with enum scalar conversion', () {
+    final schema = parseMappingYaml('''
+models:
+  EnumType:
+    enum:
+      a: { string: a }
+      b: { string: b }
+      c: { string: c }
+  Source:
+    fields:
+      id: String
+  Target:
+    fields:
+      enumField: String
+mappings:
+  - from: Source
+    to: Target
+    fields:
+      enumField: { parameter: EnumType }
+''');
+
+    final fieldMapping = schema.mappings.single.fields['enumField']!;
+    expect(fieldMapping.parameterType!.name, 'EnumType');
+
+    final resolved = ResolvedSchema(schema);
+    expect(() => resolved.validate(), returnsNormally);
+
+    final dart = emitDart(resolved);
+    expect(dart, contains('Target toTarget({'));
+    expect(dart, contains('required EnumType enumField,'));
+    expect(dart, contains('enumField: enumTypeToString(enumField)'));
+
+    final csharp = emitCSharp(resolved);
+    expect(csharp, contains('public static Target ToTarget('));
+    expect(csharp, contains('this Source source,'));
+    expect(csharp, contains('EnumType enumField)'));
+    expect(
+      csharp,
+      contains('EnumField = EnumTypeConversions.ToStringValue(enumField)'),
+    );
+  });
+
+  test('supports named converters for parameter mapping fields', () {
+    final resolved = ResolvedSchema(
+      parseMappingYaml('''
+models:
+  Source:
+    fields:
+      id: String
+  Target:
+    fields:
+      value: String
+converters:
+  - name: intText
+    from: int
+    to: String
+    dart:
+      expression: "source.toString()"
+    csharp:
+      expression: "source.ToString()"
+mappings:
+  - from: Source
+    to: Target
+    fields:
+      value: { parameter: int, converter: intText }
+'''),
+    );
+
+    expect(() => resolved.validate(), returnsNormally);
+
+    final dart = emitDart(resolved);
+    expect(dart, contains('static String intText(int source)'));
+    expect(dart, contains('value: MappingConverters.intText(value)'));
+
+    final csharp = emitCSharp(resolved);
+    expect(csharp, contains('public static string IntText(int source)'));
+    expect(csharp, contains('Value = MappingConverters.IntText(value)'));
+  });
+
+  test('rejects unknown parameter mapping types', () {
+    final schema = parseMappingYaml('''
+models:
+  Source:
+    fields:
+      id: String
+  Target:
+    fields:
+      value: String
+mappings:
+  - from: Source
+    to: Target
+    fields:
+      value: { parameter: MissingType }
+''');
+
+    expect(
+      () => ResolvedSchema(schema).validate(),
+      throwsA(isA<MapperException>()),
+    );
+  });
+
+  test('rejects nullable parameter mapping to non-nullable target fields', () {
+    final schema = parseMappingYaml('''
+models:
+  Source:
+    fields:
+      id: String
+  Target:
+    fields:
+      value: String
+mappings:
+  - from: Source
+    to: Target
+    fields:
+      value: { parameter: String? }
+''');
+
+    expect(
+      () => ResolvedSchema(schema).validate(),
+      throwsA(isA<MapperException>()),
+    );
+  });
+
+  test('does not use parameterized mappings for implicit model conversion', () {
+    final schema = parseMappingYaml('''
+models:
+  Inner:
+    fields:
+      value: String
+  InnerWire:
+    fields:
+      value: String
+      extra: String
+  Outer:
+    fields:
+      child: Inner
+  OuterWire:
+    fields:
+      child: InnerWire
+mappings:
+  - from: Inner
+    to: InnerWire
+    fields:
+      extra: { parameter: String }
+  - from: Outer
+    to: OuterWire
+''');
+
+    expect(
+      () => ResolvedSchema(schema).validate(),
+      throwsA(isA<MapperException>()),
+    );
+  });
+
   test('uses default DateTime ISO converters for json DateTime fields', () {
     final schema = parseMappingYaml('''
 models:

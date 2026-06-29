@@ -223,16 +223,27 @@ class FieldMapping {
   /// Maps a target field from [fromField].
   FieldMapping.from(this.fromField, {this.converterName})
     : hasConst = false,
-      constValue = null;
+      constValue = null,
+      parameterType = null;
 
   /// Maps a target field from a constant value.
   FieldMapping.constant(this.constValue)
     : hasConst = true,
       fromField = null,
-      converterName = null;
+      converterName = null,
+      parameterType = null;
+
+  /// Maps a target field from a required mapping function parameter.
+  FieldMapping.parameter(this.parameterType, {this.converterName})
+    : hasConst = false,
+      fromField = null,
+      constValue = null;
 
   /// Source field name when this is a field mapping.
   final String? fromField;
+
+  /// Parameter type when this is a parameter mapping.
+  final TypeRef? parameterType;
 
   /// Optional converter name to force for this mapping.
   final String? converterName;

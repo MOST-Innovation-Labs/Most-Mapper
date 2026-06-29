@@ -248,16 +248,43 @@ class _CSharpEmitter {
     buffer.writeln('public static class MappingExtensions');
     buffer.writeln('{');
     for (final mapping in resolved.schema.mappings) {
+      final assignments = resolved.mappingAssignments(mapping);
+      final parameterAssignments = assignments
+          .whereType<ResolvedParameterFieldAssignment>()
+          .toList();
+      final sourceLocal =
+          parameterAssignments.any(
+            (assignment) =>
+                _csharpParameterName(assignment.targetField) == 'source',
+          )
+          ? 'mappingSource'
+          : 'source';
       buffer.writeln(
         '    public static ${csharpTypeName(mapping.to)} ${_mappingMethodName(mapping.to)}(',
       );
-      buffer.writeln('        this ${csharpTypeName(mapping.from)} source)');
+      if (parameterAssignments.isEmpty) {
+        buffer.writeln(
+          '        this ${csharpTypeName(mapping.from)} $sourceLocal)',
+        );
+      } else {
+        buffer.writeln(
+          '        this ${csharpTypeName(mapping.from)} $sourceLocal,',
+        );
+        for (var index = 0; index < parameterAssignments.length; index++) {
+          final assignment = parameterAssignments[index];
+          final suffix = index == parameterAssignments.length - 1 ? ')' : ',';
+          buffer.writeln(
+            '        ${_csharpType(assignment.parameterType)} ${_csharpParameterName(assignment.targetField)}$suffix',
+          );
+        }
+      }
       buffer.writeln('    {');
       buffer.writeln('        return new ${csharpTypeName(mapping.to)}');
       buffer.writeln('        {');
-      for (final assignment in resolved.mappingAssignments(mapping)) {
+      for (final assignment in assignments) {
+        final expression = _assignmentExpression(assignment, sourceLocal);
         buffer.writeln(
-          '            ${csharpPropertyName(assignment.targetField.name)} = ${_assignmentExpression(assignment)},',
+          '            ${csharpPropertyName(assignment.targetField.name)} = $expression,',
         );
       }
       buffer.writeln('        };');
@@ -286,7 +313,10 @@ class _CSharpEmitter {
     buffer.writeln('$indent    );');
   }
 
-  String _assignmentExpression(ResolvedFieldAssignment assignment) {
+  String _assignmentExpression(
+    ResolvedFieldAssignment assignment,
+    String sourceLocal,
+  ) {
     return switch (assignment) {
       ResolvedConstantFieldAssignment(:final constValue) => _csharpConstant(
         constValue,
@@ -294,8 +324,10 @@ class _CSharpEmitter {
       ResolvedSourceFieldAssignment(:final sourceField, :final conversion) =>
         _convertExpression(
           conversion,
-          'source.${csharpPropertyName(sourceField.name)}',
+          '$sourceLocal.${csharpPropertyName(sourceField.name)}',
         ),
+      ResolvedParameterFieldAssignment(:final targetField, :final conversion) =>
+        _convertExpression(conversion, _csharpParameterName(targetField)),
     };
   }
 
@@ -486,6 +518,9 @@ class _CSharpEmitter {
       '${csharpTypeName(enumName)}Conversions';
 
   String _mappingMethodName(String to) => 'To${csharpTypeName(to)}';
+
+  String _csharpParameterName(FieldDef field) =>
+      lowerFirst(csharpPropertyName(field.name));
 
   void _writeDoc(StringBuffer buffer, String? doc, {String indent = ''}) {
     if (doc == null || doc.isEmpty) {
