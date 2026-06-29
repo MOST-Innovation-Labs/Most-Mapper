@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1
+
+- Renamed generated mapping parameters when they would shadow internal mapper locals.
+- Kept generated source model locals stable while suffixing conflicting parameters with `Param`.
+
 ## 0.2.0
 
 - Added mapping field parameters with `{ parameter: Type }`, generating required mapping function parameters.

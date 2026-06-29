@@ -332,6 +332,49 @@ mappings:
     expect(csharp, contains('Value = MappingConverters.IntText(value)'));
   });
 
+  test('renames parameter mapping fields that shadow generated locals', () {
+    final resolved = ResolvedSchema(
+      parseMappingYaml('''
+models:
+  SqsSource:
+    enum:
+      pos: { string: pos }
+      relay: { string: relay }
+  Payload:
+    fields:
+      id: String
+  Message:
+    fields:
+      Source: String
+      id: String
+mappings:
+  - from: Payload
+    to: Message
+    fields:
+      Source: { parameter: SqsSource }
+'''),
+    );
+
+    expect(() => resolved.validate(), returnsNormally);
+
+    final dart = emitDart(resolved);
+    expect(dart, contains('required SqsSource sourceParam,'));
+    expect(dart, contains('final source = this;'));
+    expect(dart, contains('source: sqsSourceToString(sourceParam)'));
+    expect(dart, contains('id: source.id'));
+    expect(dart, isNot(contains('mappingSource')));
+
+    final csharp = emitCSharp(resolved);
+    expect(csharp, contains('this Payload source,'));
+    expect(csharp, contains('SqsSource sourceParam)'));
+    expect(
+      csharp,
+      contains('Source = SqsSourceConversions.ToStringValue(sourceParam)'),
+    );
+    expect(csharp, contains('Id = source.Id'));
+    expect(csharp, isNot(contains('mappingSource')));
+  });
+
   test('rejects unknown parameter mapping types', () {
     final schema = parseMappingYaml('''
 models:
@@ -654,7 +697,9 @@ mappings:
 }
 
 String _withNonNativeSeparators(String path) {
-  return Platform.isWindows ? path.replaceAll(r'\', '/') : path.replaceAll('/', r'\');
+  return Platform.isWindows
+      ? path.replaceAll(r'\', '/')
+      : path.replaceAll('/', r'\');
 }
 
 ResolvedSchema _resolvedSample() {

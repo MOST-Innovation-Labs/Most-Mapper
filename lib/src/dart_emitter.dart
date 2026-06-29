@@ -208,13 +208,7 @@ class _DartEmitter {
     final parameterAssignments = assignments
         .whereType<ResolvedParameterFieldAssignment>()
         .toList();
-    final sourceLocal =
-        parameterAssignments.any(
-          (assignment) =>
-              dartFieldName(assignment.targetField.name) == 'source',
-        )
-        ? 'mappingSource'
-        : 'source';
+    final parameterNames = _dartParameterNames(parameterAssignments);
     buffer.writeln(
       'extension ${_mappingExtensionName(mapping.from, mapping.to)} on ${dartTypeName(mapping.from)} {',
     );
@@ -228,16 +222,16 @@ class _DartEmitter {
       );
       for (final assignment in parameterAssignments) {
         buffer.writeln(
-          '    required ${_dartType(assignment.parameterType)} ${dartFieldName(assignment.targetField.name)},',
+          '    required ${_dartType(assignment.parameterType)} ${parameterNames[assignment.targetField.name]},',
         );
       }
       buffer.writeln('  }) {');
     }
-    buffer.writeln('    final $sourceLocal = this;');
+    buffer.writeln('    final source = this;');
     buffer.writeln('    return ${dartTypeName(mapping.to)}(');
     for (final assignment in assignments) {
       buffer.writeln(
-        '      ${dartFieldName(assignment.targetField.name)}: ${_assignmentExpression(assignment, sourceLocal)},',
+        '      ${dartFieldName(assignment.targetField.name)}: ${_assignmentExpression(assignment, parameterNames)},',
       );
     }
     buffer.writeln('    );');
@@ -248,7 +242,7 @@ class _DartEmitter {
 
   String _assignmentExpression(
     ResolvedFieldAssignment assignment,
-    String sourceLocal,
+    Map<String, String> parameterNames,
   ) {
     return switch (assignment) {
       ResolvedConstantFieldAssignment(:final constValue, :final targetField) =>
@@ -260,11 +254,30 @@ class _DartEmitter {
       ResolvedSourceFieldAssignment(:final sourceField, :final conversion) =>
         _convertExpression(
           conversion,
-          '$sourceLocal.${dartFieldName(sourceField.name)}',
+          'source.${dartFieldName(sourceField.name)}',
         ),
       ResolvedParameterFieldAssignment(:final targetField, :final conversion) =>
-        _convertExpression(conversion, dartFieldName(targetField.name)),
+        _convertExpression(conversion, parameterNames[targetField.name]!),
     };
+  }
+
+  Map<String, String> _dartParameterNames(
+    List<ResolvedParameterFieldAssignment> assignments,
+  ) {
+    final used = {'source', 'item'};
+    final names = <String, String>{};
+    for (final assignment in assignments) {
+      final base = dartFieldName(assignment.targetField.name);
+      var name = used.contains(base) ? '${base}Param' : base;
+      var suffix = 2;
+      while (used.contains(name)) {
+        name = '${base}Param$suffix';
+        suffix++;
+      }
+      used.add(name);
+      names[assignment.targetField.name] = name;
+    }
+    return names;
   }
 
   String _convertExpression(
