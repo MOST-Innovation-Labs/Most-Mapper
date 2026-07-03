@@ -358,6 +358,15 @@ class ResolvedSchema {
     if (converterName == null && from.sameShape(to)) {
       return IdentityConversionPlan(from: from, to: to);
     }
+    if (from.nullable && !to.nullable && converterName != null) {
+      final converter = converterByName(converterName);
+      if (converter == null ||
+          !converter.from.sameShape(from) ||
+          !converter.to.sameShape(to)) {
+        return null;
+      }
+      return ConverterConversionPlan(from: from, to: to, converter: converter);
+    }
     if (from.nullable && !to.nullable) {
       return null;
     }
@@ -719,6 +728,9 @@ class ResolvedSchema {
       return;
     }
     if (from.nullable && !to.nullable) {
+      if (converter.from.sameShape(from) && converter.to.sameShape(to)) {
+        return;
+      }
       errors.add(
         'mappings ${mapping.from}->${mapping.to}.$targetFieldName uses converter $converterName for unsafe '
         'nullable source ${from.display} to non-nullable target ${to.display}.',

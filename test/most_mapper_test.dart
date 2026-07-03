@@ -636,6 +636,51 @@ mappings:
     },
   );
 
+  test('allows explicit converters from nullable source to non-null target', () {
+    final resolved = ResolvedSchema(
+      parseMappingYaml('''
+models:
+  A:
+    fields:
+      value: String?
+  B:
+    fields:
+      value: bool
+converters:
+  - name: nullableStringToBool
+    from: String?
+    to: bool
+    dart:
+      expression: source != null
+    csharp:
+      expression: source != null
+mappings:
+  - from: A
+    to: B
+    fields:
+      value: { from: value, converter: nullableStringToBool }
+'''),
+    );
+    resolved.validate();
+
+    final dart = emitDart(resolved);
+    expect(dart, contains('static bool nullableStringToBool(String? source)'));
+    expect(
+      dart,
+      contains('value: MappingConverters.nullableStringToBool(source.value)'),
+    );
+
+    final csharp = emitCSharp(resolved);
+    expect(
+      csharp,
+      contains('public static bool NullableStringToBool(string? source)'),
+    );
+    expect(
+      csharp,
+      contains('Value = MappingConverters.NullableStringToBool(source.Value)'),
+    );
+  });
+
   test('writes requested output file names', () {
     final temp = Directory.systemTemp.createTempSync('most_mapper_test_');
     try {
