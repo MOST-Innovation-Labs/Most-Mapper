@@ -67,6 +67,46 @@ class EnumModelDef extends ModelDef {
   final Map<String, EnumValueDef> values;
 }
 
+/// Closed tagged-union model definition.
+class UnionModelDef extends ModelDef {
+  /// Creates a tagged union definition.
+  UnionModelDef({
+    required super.name,
+    required super.doc,
+    required this.json,
+    required this.discriminator,
+    required this.variants,
+  });
+
+  /// Whether JSON helper methods should be generated.
+  final bool json;
+
+  /// JSON field containing the variant tag.
+  final String discriminator;
+
+  /// Union variants keyed by generated type name.
+  final Map<String, UnionVariantDef> variants;
+}
+
+/// One concrete variant of a tagged union.
+class UnionVariantDef {
+  /// Creates a union variant definition.
+  UnionVariantDef({
+    required this.name,
+    required this.value,
+    required this.fields,
+  });
+
+  /// Generated variant type name.
+  final String name;
+
+  /// Fixed discriminator wire value.
+  final String value;
+
+  /// Variant fields keyed by YAML field name.
+  final Map<String, FieldDef> fields;
+}
+
 /// Single enum value definition.
 class EnumValueDef {
   /// Creates an enum value definition.
@@ -223,16 +263,27 @@ class FieldMapping {
   /// Maps a target field from [fromField].
   FieldMapping.from(this.fromField, {this.converterName})
     : hasConst = false,
-      constValue = null;
+      constValue = null,
+      parameterType = null;
 
   /// Maps a target field from a constant value.
   FieldMapping.constant(this.constValue)
     : hasConst = true,
       fromField = null,
-      converterName = null;
+      converterName = null,
+      parameterType = null;
+
+  /// Maps a target field from a required mapping function parameter.
+  FieldMapping.parameter(this.parameterType, {this.converterName})
+    : hasConst = false,
+      fromField = null,
+      constValue = null;
 
   /// Source field name when this is a field mapping.
   final String? fromField;
+
+  /// Parameter type when this is a parameter mapping.
+  final TypeRef? parameterType;
 
   /// Optional converter name to force for this mapping.
   final String? converterName;

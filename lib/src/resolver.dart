@@ -136,6 +136,17 @@ class ResolvedSourceFieldAssignment extends ResolvedFieldAssignment {
   final ConversionPlan conversion;
 }
 
+class ResolvedParameterFieldAssignment extends ResolvedFieldAssignment {
+  const ResolvedParameterFieldAssignment({
+    required super.targetField,
+    required this.parameterType,
+    required this.conversion,
+  });
+
+  final TypeRef parameterType;
+  final ConversionPlan conversion;
+}
+
 class ResolvedConstantFieldAssignment extends ResolvedFieldAssignment {
   const ResolvedConstantFieldAssignment({
     required super.targetField,
@@ -158,6 +169,9 @@ class ResolvedSchema {
   Iterable<EnumModelDef> get enumModels =>
       schema.models.values.whereType<EnumModelDef>();
 
+  Iterable<UnionModelDef> get unionModels =>
+      schema.models.values.whereType<UnionModelDef>();
+
   DataModelDef dataModel(String name) => schema.models[name]! as DataModelDef;
 
   EnumModelDef enumModel(String name) => schema.models[name]! as EnumModelDef;
@@ -165,6 +179,8 @@ class ResolvedSchema {
   bool isDataModel(String name) => schema.models[name] is DataModelDef;
 
   bool isEnum(String name) => schema.models[name] is EnumModelDef;
+
+  bool isUnion(String name) => schema.models[name] is UnionModelDef;
 
   bool isKnownType(String name) =>
       name == 'List' ||
@@ -244,10 +260,23 @@ class ResolvedSchema {
         used.addAll(jsonConvertersFor(field.type));
       }
     }
+    for (final model in unionModels) {
+      if (!model.json) {
+        continue;
+      }
+      for (final variant in model.variants.values) {
+        for (final field in variant.fields.values) {
+          used.addAll(jsonConvertersFor(field.type));
+        }
+      }
+    }
     for (final mapping in schema.mappings) {
       for (final assignment in mappingAssignments(mapping)) {
-        if (assignment case ResolvedSourceFieldAssignment(:final conversion)) {
-          used.addAll(conversion.usedConverters);
+        switch (assignment) {
+          case ResolvedSourceFieldAssignment(:final conversion):
+          case ResolvedParameterFieldAssignment(:final conversion):
+            used.addAll(conversion.usedConverters);
+          case ResolvedConstantFieldAssignment():
         }
       }
     }
@@ -304,6 +333,17 @@ class ResolvedSchema {
         constValue: fieldMapping.constValue,
       );
     }
+    if (fieldMapping.parameterType case final TypeRef parameterType) {
+      return ResolvedParameterFieldAssignment(
+        targetField: targetField,
+        parameterType: parameterType,
+        conversion: conversionPlanFor(
+          parameterType,
+          targetField.type,
+          converterName: fieldMapping.converterName,
+        )!,
+      );
+    }
 
     final sourceField = fromModel.fields[fieldMapping.fromField]!;
     return ResolvedSourceFieldAssignment(
@@ -332,6 +372,15 @@ class ResolvedSchema {
   }) {
     if (converterName == null && from.sameShape(to)) {
       return IdentityConversionPlan(from: from, to: to);
+    }
+    if (from.nullable && !to.nullable && converterName != null) {
+      final converter = converterByName(converterName);
+      if (converter == null ||
+          !converter.from.sameShape(from) ||
+          !converter.to.sameShape(to)) {
+        return null;
+      }
+      return ConverterConversionPlan(from: from, to: to, converter: converter);
     }
     if (from.nullable && !to.nullable) {
       return null;
@@ -436,7 +485,7 @@ class ResolvedSchema {
     }
     if (isDataModel(from.name) && isDataModel(to.name)) {
       final mapping = mappingFor(from, to);
-      if (mapping != null) {
+      if (mapping != null && !mappingHasParameters(mapping)) {
         return ModelMappingConversionPlan(from: from, to: to, mapping: mapping);
       }
     }
@@ -455,6 +504,8 @@ class ResolvedSchema {
         _validateDataModel(model, errors);
       } else if (model is EnumModelDef) {
         _validateEnum(model, errors);
+      } else if (model is UnionModelDef) {
+        _validateUnion(model, errors);
       }
     }
     for (final converter in converters) {
@@ -504,6 +555,12 @@ class ResolvedSchema {
     }
   }
 
+  bool mappingHasParameters(MappingDef mapping) {
+    return mapping.fields.values.any(
+      (fieldMapping) => fieldMapping.parameterType != null,
+    );
+  }
+
   void _validateEnum(EnumModelDef model, List<String> errors) {
     if (model.values.isEmpty) {
       errors.add('models.${model.name}.enum must contain at least one value.');
@@ -539,6 +596,65 @@ class ResolvedSchema {
         errors.add(
           'models.${model.name}.enum has duplicate int value ${value.intValue}.',
         );
+      }
+    }
+  }
+
+  void _validateUnion(UnionModelDef model, List<String> errors) {
+    if (model.variants.isEmpty) {
+      errors.add(
+        'models.${model.name}.union.variants must contain at least one variant.',
+      );
+    }
+
+    final values = <String>{};
+    for (final variant in model.variants.values) {
+      if (!values.add(variant.value)) {
+        errors.add(
+          'models.${model.name}.union has duplicate discriminator value ${variant.value}.',
+        );
+      }
+      if (variant.name == model.name ||
+          schema.models.containsKey(variant.name)) {
+        errors.add(
+          'models.${model.name}.union variant ${variant.name} conflicts with a model name.',
+        );
+      }
+
+      final dartNames = <String, String>{};
+      final csharpNames = <String, String>{};
+      for (final field in variant.fields.values) {
+        if (field.name == model.discriminator) {
+          errors.add(
+            'models.${model.name}.union variant ${variant.name} field ${field.name} conflicts with discriminator ${model.discriminator}.',
+          );
+        }
+        _validateType(
+          field.type,
+          'models.${model.name}.union.variants.${variant.name}.fields.${field.name}',
+          errors,
+        );
+        _recordIdentifier(
+          dartNames,
+          dartFieldName(field.name),
+          field.name,
+          'Dart',
+          variant.name,
+          errors,
+        );
+        _recordIdentifier(
+          csharpNames,
+          csharpPropertyName(field.name),
+          field.name,
+          'C#',
+          variant.name,
+          errors,
+        );
+        if (model.json && !_canUseJson(field.type)) {
+          errors.add(
+            'models.${model.name}.union.variants.${variant.name}.fields.${field.name} is not JSON serializable.',
+          );
+        }
       }
     }
   }
@@ -597,6 +713,32 @@ class ResolvedSchema {
           entry.key,
           errors,
         );
+        continue;
+      }
+      if (fieldMapping.parameterType case final TypeRef parameterType) {
+        _validateType(
+          parameterType,
+          'mappings ${mapping.from}->${mapping.to}.${targetField.name} parameter type',
+          errors,
+        );
+        if (fieldMapping.converterName case final String converterName
+            when converterName != 'default') {
+          _validateExplicitConverter(
+            converterName,
+            parameterType,
+            targetField.type,
+            mapping,
+            targetField.name,
+            errors,
+          );
+          continue;
+        }
+        if (!canConvert(parameterType, targetField.type)) {
+          errors.add(
+            'Cannot map parameter ${targetField.name} (${parameterType}) to '
+            '${mapping.to}.${targetField.name} (${targetField.type}).',
+          );
+        }
         continue;
       }
       final sourceField = from.fields[fieldMapping.fromField];
@@ -662,6 +804,9 @@ class ResolvedSchema {
       return;
     }
     if (from.nullable && !to.nullable) {
+      if (converter.from.sameShape(from) && converter.to.sameShape(to)) {
+        return;
+      }
       errors.add(
         'mappings ${mapping.from}->${mapping.to}.$targetFieldName uses converter $converterName for unsafe '
         'nullable source ${from.display} to non-nullable target ${to.display}.',
@@ -735,6 +880,9 @@ class ResolvedSchema {
       );
     }
     if (schema.models[type.name] case final DataModelDef model) {
+      return model.json;
+    }
+    if (schema.models[type.name] case final UnionModelDef model) {
       return model.json;
     }
     return false;

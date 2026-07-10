@@ -47,11 +47,15 @@ class _CSharpEmitter {
 
   StringBuffer _buildBody() {
     final body = StringBuffer();
-    if (resolved.dataModels.any((model) => model.json)) {
+    if (resolved.dataModels.any((model) => model.json) ||
+        resolved.unionModels.any((model) => model.json)) {
       _writeJsonHelper(body);
     }
     for (final enumDef in resolved.enumModels) {
       _writeEnum(body, enumDef);
+    }
+    for (final union in resolved.unionModels) {
+      _writeUnion(body, union);
     }
     for (final model in resolved.dataModels) {
       _writeDataModel(body, model);
@@ -186,6 +190,102 @@ class _CSharpEmitter {
     buffer.writeln();
   }
 
+  void _writeUnion(StringBuffer buffer, UnionModelDef model) {
+    final typeName = csharpTypeName(model.name);
+    _writeDoc(buffer, model.doc);
+    buffer.writeln('public abstract class $typeName');
+    buffer.writeln('{');
+    if (model.json) {
+      buffer.writeln(
+        '    public abstract Dictionary<string, object?> ToJsonMap();',
+      );
+      buffer.writeln();
+      buffer.writeln(
+        '    public string ToJson() => JsonSerializer.Serialize(ToJsonMap());',
+      );
+      buffer.writeln();
+      buffer.writeln('    public static $typeName FromJson(string json)');
+      buffer.writeln('    {');
+      buffer.writeln('        using var document = JsonDocument.Parse(json);');
+      buffer.writeln('        return FromJsonElement(document.RootElement);');
+      buffer.writeln('    }');
+      buffer.writeln();
+      buffer.writeln(
+        '    public static $typeName FromJsonElement(JsonElement json)',
+      );
+      buffer.writeln('    {');
+      buffer.writeln(
+        '        var discriminator = json.GetProperty(${csharpStringLiteral(model.discriminator)}).GetString();',
+      );
+      buffer.writeln('        return discriminator switch');
+      buffer.writeln('        {');
+      for (final variant in model.variants.values) {
+        buffer.writeln(
+          '            ${csharpStringLiteral(variant.value)} => new ${csharpTypeName(variant.name)}',
+        );
+        buffer.writeln('            {');
+        for (final field in variant.fields.values) {
+          buffer.writeln(
+            '                ${csharpPropertyName(field.name)} = ${_fieldFromJsonExpression(field)},',
+          );
+        }
+        buffer.writeln('            },');
+      }
+      buffer.writeln(
+        '            _ => throw new ArgumentOutOfRangeException(${csharpStringLiteral(model.discriminator)}, discriminator, ${csharpStringLiteral('Unknown $typeName discriminator')}),',
+      );
+      buffer.writeln('        };');
+      buffer.writeln('    }');
+    }
+    buffer.writeln('}');
+    buffer.writeln();
+
+    for (final variant in model.variants.values) {
+      _writeUnionVariant(buffer, model, variant);
+    }
+  }
+
+  void _writeUnionVariant(
+    StringBuffer buffer,
+    UnionModelDef model,
+    UnionVariantDef variant,
+  ) {
+    buffer.writeln(
+      'public sealed class ${csharpTypeName(variant.name)} : ${csharpTypeName(model.name)}',
+    );
+    buffer.writeln('{');
+    for (final field in variant.fields.values) {
+      _writeDoc(buffer, field.doc, indent: '    ');
+      buffer.writeln(
+        '    public ${_csharpType(field.type)} ${csharpPropertyName(field.name)} '
+        '{ get; set; }${_propertyDefault(field.type)}',
+      );
+    }
+    if (model.json) {
+      if (variant.fields.isNotEmpty) {
+        buffer.writeln();
+      }
+      buffer.writeln(
+        '    public override Dictionary<string, object?> ToJsonMap()',
+      );
+      buffer.writeln('    {');
+      buffer.writeln('        return new Dictionary<string, object?>');
+      buffer.writeln('        {');
+      buffer.writeln(
+        '            [${csharpStringLiteral(model.discriminator)}] = ${csharpStringLiteral(variant.value)},',
+      );
+      for (final field in variant.fields.values) {
+        buffer.writeln(
+          '            [${csharpStringLiteral(field.name)}] = ${_toJsonExpression(field.type, csharpPropertyName(field.name))},',
+        );
+      }
+      buffer.writeln('        };');
+      buffer.writeln('    }');
+    }
+    buffer.writeln('}');
+    buffer.writeln();
+  }
+
   void _writeDataModel(StringBuffer buffer, DataModelDef model) {
     _writeDoc(buffer, model.doc);
     buffer.writeln('public class ${csharpTypeName(model.name)}');
@@ -248,16 +348,33 @@ class _CSharpEmitter {
     buffer.writeln('public static class MappingExtensions');
     buffer.writeln('{');
     for (final mapping in resolved.schema.mappings) {
+      final assignments = resolved.mappingAssignments(mapping);
+      final parameterAssignments = assignments
+          .whereType<ResolvedParameterFieldAssignment>()
+          .toList();
+      final parameterNames = _csharpParameterNames(parameterAssignments);
       buffer.writeln(
         '    public static ${csharpTypeName(mapping.to)} ${_mappingMethodName(mapping.to)}(',
       );
-      buffer.writeln('        this ${csharpTypeName(mapping.from)} source)');
+      if (parameterAssignments.isEmpty) {
+        buffer.writeln('        this ${csharpTypeName(mapping.from)} source)');
+      } else {
+        buffer.writeln('        this ${csharpTypeName(mapping.from)} source,');
+        for (var index = 0; index < parameterAssignments.length; index++) {
+          final assignment = parameterAssignments[index];
+          final suffix = index == parameterAssignments.length - 1 ? ')' : ',';
+          buffer.writeln(
+            '        ${_csharpType(assignment.parameterType)} ${parameterNames[assignment.targetField.name]}$suffix',
+          );
+        }
+      }
       buffer.writeln('    {');
       buffer.writeln('        return new ${csharpTypeName(mapping.to)}');
       buffer.writeln('        {');
-      for (final assignment in resolved.mappingAssignments(mapping)) {
+      for (final assignment in assignments) {
+        final expression = _assignmentExpression(assignment, parameterNames);
         buffer.writeln(
-          '            ${csharpPropertyName(assignment.targetField.name)} = ${_assignmentExpression(assignment)},',
+          '            ${csharpPropertyName(assignment.targetField.name)} = $expression,',
         );
       }
       buffer.writeln('        };');
@@ -286,7 +403,10 @@ class _CSharpEmitter {
     buffer.writeln('$indent    );');
   }
 
-  String _assignmentExpression(ResolvedFieldAssignment assignment) {
+  String _assignmentExpression(
+    ResolvedFieldAssignment assignment,
+    Map<String, String> parameterNames,
+  ) {
     return switch (assignment) {
       ResolvedConstantFieldAssignment(:final constValue) => _csharpConstant(
         constValue,
@@ -296,6 +416,8 @@ class _CSharpEmitter {
           conversion,
           'source.${csharpPropertyName(sourceField.name)}',
         ),
+      ResolvedParameterFieldAssignment(:final targetField, :final conversion) =>
+        _convertExpression(conversion, parameterNames[targetField.name]!),
     };
   }
 
@@ -338,6 +460,9 @@ class _CSharpEmitter {
     if (resolved.isDataModel(type.name)) {
       return '$expression.ToJsonMap()';
     }
+    if (resolved.isUnion(type.name)) {
+      return '$expression.ToJsonMap()';
+    }
     if (resolved.isEnum(type.name)) {
       return resolved.enumUsesStringJson(resolved.enumModel(type.name))
           ? '${_enumHelperName(type.name)}.ToStringValue($expression)'
@@ -364,6 +489,9 @@ class _CSharpEmitter {
       return '$expression.EnumerateArray().Select(item => ${_fromJsonExpression(type.item!, 'item')}).ToList()';
     }
     if (resolved.isDataModel(type.name)) {
+      return '${csharpTypeName(type.name)}.FromJsonElement($expression)';
+    }
+    if (resolved.isUnion(type.name)) {
       return '${csharpTypeName(type.name)}.FromJsonElement($expression)';
     }
     if (resolved.isEnum(type.name)) {
@@ -486,6 +614,28 @@ class _CSharpEmitter {
       '${csharpTypeName(enumName)}Conversions';
 
   String _mappingMethodName(String to) => 'To${csharpTypeName(to)}';
+
+  String _csharpParameterName(FieldDef field) =>
+      lowerFirst(csharpPropertyName(field.name));
+
+  Map<String, String> _csharpParameterNames(
+    List<ResolvedParameterFieldAssignment> assignments,
+  ) {
+    final used = {'source', 'item'};
+    final names = <String, String>{};
+    for (final assignment in assignments) {
+      final base = _csharpParameterName(assignment.targetField);
+      var name = used.contains(base) ? '${base}Param' : base;
+      var suffix = 2;
+      while (used.contains(name)) {
+        name = '${base}Param$suffix';
+        suffix++;
+      }
+      used.add(name);
+      names[assignment.targetField.name] = name;
+    }
+    return names;
+  }
 
   void _writeDoc(StringBuffer buffer, String? doc, {String indent = ''}) {
     if (doc == null || doc.isEmpty) {

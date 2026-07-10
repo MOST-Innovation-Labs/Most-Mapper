@@ -11,7 +11,7 @@
 </p>
 
 `most_mapper` is a Dart CLI package that generates Dart and C# mapping code from one YAML file.
-The mapping file declares data models, enums, converter expressions, and typed mappings between models.
+The mapping file declares data models, enums, tagged unions, converter expressions, and typed mappings between models.
 Generated Dart files are formatted with `dart format`; generated C# files are formatted with `dotnet format`.
 
 ## Usage
@@ -51,8 +51,8 @@ C# generation requires the .NET SDK because the generated `.cs` file is passed t
 
 ## YAML Features
 
-- `models` declares generated data classes and enums.
-- `json: true` on a data model generates JSON helpers. It defaults to `false`.
+- `models` declares generated data classes, enums, and tagged unions.
+- `json: true` on a data model or union generates JSON helpers. It defaults to `false`.
 - Fields support `field: Type`, `field: Type?`, and `{ type: Type, nullable: true, doc: Description }`.
 - Enum models support string and int wire values.
 - Enums can map to and from `String` and `int` when every enum value declares that wire value.
@@ -65,7 +65,32 @@ C# generation requires the .NET SDK because the generated `.cs` file is passed t
 - Multiline converter expressions are supported with YAML block strings.
 - `mappings` generate typed extension methods on source models.
 - Mapping fields support `{ from: SourceField }`, `{ const: null }`, and scalar constants.
+- Mapping fields support `{ parameter: Type }` for required generated mapping parameters.
 - Mapping field names are case-sensitive YAML keys.
+
+## Tagged Unions
+
+Unions use `Type` as their discriminator unless `discriminator` is specified. Dart emits a sealed base class and
+final variants; C# emits an abstract base class and sealed variants. JSON-enabled unions reject missing or unknown
+discriminator values.
+
+```yaml
+models:
+  StockSource:
+    json: true
+    union:
+      discriminator: Type
+      variants:
+        BarsetsSource:
+          value: Barsets
+          fields:
+            BarsetIds: List<int>
+        PackingPlanSource:
+          value: PackingPlan
+```
+
+Union types can be used as model fields and converter input/output types. Use explicit converters when domain and
+wire unions have different variant class names.
 
 ## Data Types
 
@@ -81,6 +106,7 @@ C# generation requires the .NET SDK because the generated `.cs` file is passed t
 | `List<T>` | `List<T>` | `List<T>` | Element-wise mapping/conversion |
 | custom model | generated class | generated class | Declared in `models` |
 | enum model | generated enum | generated enum | Supports string/int scalar conversion |
+| union model | sealed class | abstract class | Closed variants with fixed discriminator values |
 
 ## Mapping Rules
 

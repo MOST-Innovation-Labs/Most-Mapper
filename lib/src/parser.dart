@@ -32,10 +32,32 @@ Map<String, ModelDef> _parseModels(Object? value, String sourceName) {
     final doc = _optionalString(body['doc'], 'models.$name.doc');
 
     if (body.containsKey('enum')) {
+      if (body.containsKey('union')) {
+        throw MapperException(
+          'models.$name must contain exactly one of enum or union.',
+        );
+      }
       models[name] = EnumModelDef(
         name: name,
         doc: doc,
         values: _parseEnumValues(body['enum'], name),
+      );
+      continue;
+    }
+
+    if (body.containsKey('union')) {
+      final union = _mapValue(body['union'], 'models.$name.union');
+      models[name] = UnionModelDef(
+        name: name,
+        doc: doc,
+        json: _optionalBool(body['json'], 'models.$name.json') ?? false,
+        discriminator:
+            _optionalString(
+              union['discriminator'],
+              'models.$name.union.discriminator',
+            ) ??
+            'Type',
+        variants: _parseUnionVariants(union['variants'], name),
       );
       continue;
     }
@@ -48,6 +70,35 @@ Map<String, ModelDef> _parseModels(Object? value, String sourceName) {
     );
   }
   return models;
+}
+
+Map<String, UnionVariantDef> _parseUnionVariants(
+  Object? value,
+  String modelName,
+) {
+  if (value is! YamlMap) {
+    throw MapperException('models.$modelName.union.variants must be a map.');
+  }
+
+  final variants = <String, UnionVariantDef>{};
+  for (final entry in value.entries) {
+    final name = _stringKey(entry.key, 'union variant name');
+    final body = _mapValue(
+      entry.value,
+      'models.$modelName.union.variants.$name',
+    );
+    variants[name] = UnionVariantDef(
+      name: name,
+      value: _requiredString(
+        body['value'],
+        'models.$modelName.union.variants.$name.value',
+      ),
+      fields: body.containsKey('fields')
+          ? _parseFields(body['fields'], '$modelName.union.variants.$name')
+          : {},
+    );
+  }
+  return variants;
 }
 
 Map<String, EnumValueDef> _parseEnumValues(Object? value, String modelName) {
@@ -200,23 +251,46 @@ Map<String, FieldMapping> _parseMappingFields(Object? value, int mappingIndex) {
     );
     final hasFrom = body.containsKey('from');
     final hasConst = body.containsKey('const');
-    if (hasFrom == hasConst) {
+    final hasParameter = body.containsKey('parameter');
+    final assignmentCount = [
+      hasFrom,
+      hasConst,
+      hasParameter,
+    ].where((value) => value).length;
+    if (assignmentCount != 1) {
       throw MapperException(
-        'mappings[$mappingIndex].fields.$targetName must contain exactly one of from or const.',
+        'mappings[$mappingIndex].fields.$targetName must contain exactly one of from, const, or parameter.',
       );
     }
-    fields[targetName] = hasFrom
-        ? FieldMapping.from(
-            _requiredString(
-              body['from'],
-              'mappings[$mappingIndex].fields.$targetName.from',
-            ),
-            converterName: _optionalString(
-              body['converter'],
-              'mappings[$mappingIndex].fields.$targetName.converter',
-            ),
-          )
-        : FieldMapping.constant(body['const']);
+    if (hasFrom) {
+      fields[targetName] = FieldMapping.from(
+        _requiredString(
+          body['from'],
+          'mappings[$mappingIndex].fields.$targetName.from',
+        ),
+        converterName: _optionalString(
+          body['converter'],
+          'mappings[$mappingIndex].fields.$targetName.converter',
+        ),
+      );
+      continue;
+    }
+    if (hasParameter) {
+      fields[targetName] = FieldMapping.parameter(
+        parseType(
+          _requiredString(
+            body['parameter'],
+            'mappings[$mappingIndex].fields.$targetName.parameter',
+          ),
+        ),
+        converterName: _optionalString(
+          body['converter'],
+          'mappings[$mappingIndex].fields.$targetName.converter',
+        ),
+      );
+      continue;
+    }
+    fields[targetName] = FieldMapping.constant(body['const']);
   }
   return fields;
 }
