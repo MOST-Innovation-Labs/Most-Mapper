@@ -169,6 +169,9 @@ class ResolvedSchema {
   Iterable<EnumModelDef> get enumModels =>
       schema.models.values.whereType<EnumModelDef>();
 
+  Iterable<UnionModelDef> get unionModels =>
+      schema.models.values.whereType<UnionModelDef>();
+
   DataModelDef dataModel(String name) => schema.models[name]! as DataModelDef;
 
   EnumModelDef enumModel(String name) => schema.models[name]! as EnumModelDef;
@@ -176,6 +179,8 @@ class ResolvedSchema {
   bool isDataModel(String name) => schema.models[name] is DataModelDef;
 
   bool isEnum(String name) => schema.models[name] is EnumModelDef;
+
+  bool isUnion(String name) => schema.models[name] is UnionModelDef;
 
   bool isKnownType(String name) =>
       name == 'List' ||
@@ -253,6 +258,16 @@ class ResolvedSchema {
       }
       for (final field in model.fields.values) {
         used.addAll(jsonConvertersFor(field.type));
+      }
+    }
+    for (final model in unionModels) {
+      if (!model.json) {
+        continue;
+      }
+      for (final variant in model.variants.values) {
+        for (final field in variant.fields.values) {
+          used.addAll(jsonConvertersFor(field.type));
+        }
       }
     }
     for (final mapping in schema.mappings) {
@@ -489,6 +504,8 @@ class ResolvedSchema {
         _validateDataModel(model, errors);
       } else if (model is EnumModelDef) {
         _validateEnum(model, errors);
+      } else if (model is UnionModelDef) {
+        _validateUnion(model, errors);
       }
     }
     for (final converter in converters) {
@@ -503,12 +520,6 @@ class ResolvedSchema {
     if (errors.isNotEmpty) {
       throw MapperException(errors.join('\n'));
     }
-  }
-
-  bool mappingHasParameters(MappingDef mapping) {
-    return mapping.fields.values.any(
-      (fieldMapping) => fieldMapping.parameterType != null,
-    );
   }
 
   void _validateDataModel(DataModelDef model, List<String> errors) {
@@ -542,6 +553,12 @@ class ResolvedSchema {
         );
       }
     }
+  }
+
+  bool mappingHasParameters(MappingDef mapping) {
+    return mapping.fields.values.any(
+      (fieldMapping) => fieldMapping.parameterType != null,
+    );
   }
 
   void _validateEnum(EnumModelDef model, List<String> errors) {
@@ -579,6 +596,65 @@ class ResolvedSchema {
         errors.add(
           'models.${model.name}.enum has duplicate int value ${value.intValue}.',
         );
+      }
+    }
+  }
+
+  void _validateUnion(UnionModelDef model, List<String> errors) {
+    if (model.variants.isEmpty) {
+      errors.add(
+        'models.${model.name}.union.variants must contain at least one variant.',
+      );
+    }
+
+    final values = <String>{};
+    for (final variant in model.variants.values) {
+      if (!values.add(variant.value)) {
+        errors.add(
+          'models.${model.name}.union has duplicate discriminator value ${variant.value}.',
+        );
+      }
+      if (variant.name == model.name ||
+          schema.models.containsKey(variant.name)) {
+        errors.add(
+          'models.${model.name}.union variant ${variant.name} conflicts with a model name.',
+        );
+      }
+
+      final dartNames = <String, String>{};
+      final csharpNames = <String, String>{};
+      for (final field in variant.fields.values) {
+        if (field.name == model.discriminator) {
+          errors.add(
+            'models.${model.name}.union variant ${variant.name} field ${field.name} conflicts with discriminator ${model.discriminator}.',
+          );
+        }
+        _validateType(
+          field.type,
+          'models.${model.name}.union.variants.${variant.name}.fields.${field.name}',
+          errors,
+        );
+        _recordIdentifier(
+          dartNames,
+          dartFieldName(field.name),
+          field.name,
+          'Dart',
+          variant.name,
+          errors,
+        );
+        _recordIdentifier(
+          csharpNames,
+          csharpPropertyName(field.name),
+          field.name,
+          'C#',
+          variant.name,
+          errors,
+        );
+        if (model.json && !_canUseJson(field.type)) {
+          errors.add(
+            'models.${model.name}.union.variants.${variant.name}.fields.${field.name} is not JSON serializable.',
+          );
+        }
       }
     }
   }
@@ -804,6 +880,9 @@ class ResolvedSchema {
       );
     }
     if (schema.models[type.name] case final DataModelDef model) {
+      return model.json;
+    }
+    if (schema.models[type.name] case final UnionModelDef model) {
       return model.json;
     }
     return false;

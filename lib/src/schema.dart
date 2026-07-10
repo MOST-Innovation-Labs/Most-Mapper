@@ -67,6 +67,46 @@ class EnumModelDef extends ModelDef {
   final Map<String, EnumValueDef> values;
 }
 
+/// Closed tagged-union model definition.
+class UnionModelDef extends ModelDef {
+  /// Creates a tagged union definition.
+  UnionModelDef({
+    required super.name,
+    required super.doc,
+    required this.json,
+    required this.discriminator,
+    required this.variants,
+  });
+
+  /// Whether JSON helper methods should be generated.
+  final bool json;
+
+  /// JSON field containing the variant tag.
+  final String discriminator;
+
+  /// Union variants keyed by generated type name.
+  final Map<String, UnionVariantDef> variants;
+}
+
+/// One concrete variant of a tagged union.
+class UnionVariantDef {
+  /// Creates a union variant definition.
+  UnionVariantDef({
+    required this.name,
+    required this.value,
+    required this.fields,
+  });
+
+  /// Generated variant type name.
+  final String name;
+
+  /// Fixed discriminator wire value.
+  final String value;
+
+  /// Variant fields keyed by YAML field name.
+  final Map<String, FieldDef> fields;
+}
+
 /// Single enum value definition.
 class EnumValueDef {
   /// Creates an enum value definition.

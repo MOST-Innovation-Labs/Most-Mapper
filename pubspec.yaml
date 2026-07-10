@@ -1,6 +1,6 @@
 name: most_mapper
 description: A YAML-driven CLI generator for Dart and C# model mapping code.
-version: 0.2.2
+version: 0.3.0
 repository: https://github.com/MOST-Innovation-Labs/Most-Mapper
 
 environment:

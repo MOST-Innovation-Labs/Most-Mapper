@@ -31,6 +31,46 @@ void main() {
     },
   );
 
+  test('parses and validates tagged unions', () {
+    final resolved = ResolvedSchema(parseMappingYaml(_unionYaml));
+    final source = resolved.schema.models['StockSource']! as UnionModelDef;
+    final wire = resolved.schema.models['WireStockSource']! as UnionModelDef;
+
+    expect(source.discriminator, 'Type');
+    expect(source.json, isFalse);
+    expect(source.variants['BarsetsSource']!.value, 'Barsets');
+    expect(
+      source.variants['BarsetsSource']!.fields['BarsetIds']!.type.display,
+      'List<int>',
+    );
+    expect(wire.json, isTrue);
+    expect(() => resolved.validate(), returnsNormally);
+  });
+
+  test('rejects duplicate union discriminator values', () {
+    final resolved = ResolvedSchema(
+      parseMappingYaml('''
+models:
+  Source:
+    union:
+      variants:
+        First: { value: Same }
+        Second: { value: Same }
+'''),
+    );
+
+    expect(
+      () => resolved.validate(),
+      throwsA(
+        isA<MapperException>().having(
+          (error) => error.message,
+          'message',
+          contains('duplicate discriminator value Same'),
+        ),
+      ),
+    );
+  });
+
   test(
     'validates default mapping, numeric casts, enum scalar conversions, and converters',
     () {
@@ -230,6 +270,26 @@ void main() {
       expect(output, contains('SomeField = null'));
     },
   );
+
+  test('emits Dart and C# tagged unions with JSON dispatch', () {
+    final resolved = ResolvedSchema(parseMappingYaml(_unionYaml));
+    resolved.validate();
+
+    final dart = emitDart(resolved);
+    expect(dart, contains('sealed class StockSource'));
+    expect(dart, contains('final class BarsetsSource extends StockSource'));
+    expect(dart, contains('factory WireStockSource.fromJson'));
+    expect(dart, contains("case 'Barsets':"));
+    expect(dart, contains("'Type': 'PackingPlan'"));
+    expect(dart, contains('Unknown WireStockSource discriminator'));
+
+    final csharp = emitCSharp(resolved);
+    expect(csharp, contains('public abstract class StockSource'));
+    expect(csharp, contains('public sealed class BarsetsSource : StockSource'));
+    expect(csharp, contains('public static WireStockSource FromJsonElement'));
+    expect(csharp, contains('"Barsets" => new WireBarsetsSource'));
+    expect(csharp, contains('Unknown WireStockSource discriminator'));
+  });
 
   test('rejects const null for non-nullable fields', () {
     final schema = parseMappingYaml('''
@@ -636,9 +696,11 @@ mappings:
     },
   );
 
-  test('allows explicit converters from nullable source to non-null target', () {
-    final resolved = ResolvedSchema(
-      parseMappingYaml('''
+  test(
+    'allows explicit converters from nullable source to non-null target',
+    () {
+      final resolved = ResolvedSchema(
+        parseMappingYaml('''
 models:
   A:
     fields:
@@ -660,26 +722,32 @@ mappings:
     fields:
       value: { from: value, converter: nullableStringToBool }
 '''),
-    );
-    resolved.validate();
+      );
+      resolved.validate();
 
-    final dart = emitDart(resolved);
-    expect(dart, contains('static bool nullableStringToBool(String? source)'));
-    expect(
-      dart,
-      contains('value: MappingConverters.nullableStringToBool(source.value)'),
-    );
+      final dart = emitDart(resolved);
+      expect(
+        dart,
+        contains('static bool nullableStringToBool(String? source)'),
+      );
+      expect(
+        dart,
+        contains('value: MappingConverters.nullableStringToBool(source.value)'),
+      );
 
-    final csharp = emitCSharp(resolved);
-    expect(
-      csharp,
-      contains('public static bool NullableStringToBool(string? source)'),
-    );
-    expect(
-      csharp,
-      contains('Value = MappingConverters.NullableStringToBool(source.Value)'),
-    );
-  });
+      final csharp = emitCSharp(resolved);
+      expect(
+        csharp,
+        contains('public static bool NullableStringToBool(string? source)'),
+      );
+      expect(
+        csharp,
+        contains(
+          'Value = MappingConverters.NullableStringToBool(source.Value)',
+        ),
+      );
+    },
+  );
 
   test('writes requested output file names', () {
     final temp = Directory.systemTemp.createTempSync('most_mapper_test_');
@@ -739,12 +807,114 @@ mappings:
       temp.deleteSync(recursive: true);
     }
   });
+
+  test('round-trips generated Dart and C# tagged unions', () {
+    final temp = Directory.systemTemp.createTempSync('most_mapper_union_test_');
+    try {
+      final mapping = File(p.join(temp.path, 'mapping.yaml'))
+        ..writeAsStringSync(_unionYaml);
+      generate(
+        GeneratorOptions(
+          mappingPath: mapping.path,
+          dartOutDir: p.join(temp.path, 'dart'),
+          dartFileName: 'union.dart',
+          csharpOutDir: p.join(temp.path, 'csharp'),
+          csharpFileName: 'Union.cs',
+        ),
+      );
+
+      _verifyDartUnionRoundTrip(p.join(temp.path, 'dart'));
+      _verifyCSharpUnionRoundTrip(p.join(temp.path, 'csharp'));
+    } finally {
+      temp.deleteSync(recursive: true);
+    }
+  });
 }
 
 String _withNonNativeSeparators(String path) {
   return Platform.isWindows
       ? path.replaceAll(r'\', '/')
       : path.replaceAll('/', r'\');
+}
+
+void _verifyDartUnionRoundTrip(String directory) {
+  final check = File(p.join(directory, 'union_check.dart'))
+    ..writeAsStringSync(r'''
+import 'union.dart';
+
+void main() {
+  final parsed = WireStockSource.fromJson(<String, dynamic>{
+    'Type': 'Barsets',
+    'BarsetIds': <int>[2, 1],
+  });
+  if (parsed is! WireBarsetsSource || parsed.barsetIds.join(',') != '2,1') {
+    throw StateError('Dart union parsing failed');
+  }
+  final roundTrip = WireStockSource.fromJson(parsed.toJson());
+  if (roundTrip is! WireBarsetsSource || roundTrip.barsetIds.join(',') != '2,1') {
+    throw StateError('Dart union round trip failed');
+  }
+
+  var rejected = false;
+  try {
+    WireStockSource.fromJson(<String, dynamic>{'Type': 'Unknown'});
+  } on ArgumentError {
+    rejected = true;
+  }
+  if (!rejected) {
+    throw StateError('Dart union accepted an unknown discriminator');
+  }
+}
+''');
+
+  final result = Process.runSync(Platform.resolvedExecutable, [check.path]);
+  expect(result.exitCode, 0, reason: '${result.stdout}\n${result.stderr}');
+}
+
+void _verifyCSharpUnionRoundTrip(String directory) {
+  final project = File(p.join(directory, 'UnionCheck.csproj'))
+    ..writeAsStringSync('''
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+</Project>
+''');
+  File(p.join(directory, 'Program.cs')).writeAsStringSync(r'''
+using System;
+
+var parsed = WireStockSource.FromJson("{\"Type\":\"Barsets\",\"BarsetIds\":[2,1]}");
+if (parsed is not WireBarsetsSource barsets || string.Join(',', barsets.BarsetIds) != "2,1")
+{
+    throw new InvalidOperationException("C# union parsing failed");
+}
+
+var roundTrip = WireStockSource.FromJson(parsed.ToJson());
+if (roundTrip is not WireBarsetsSource roundTripBarsets || string.Join(',', roundTripBarsets.BarsetIds) != "2,1")
+{
+    throw new InvalidOperationException("C# union round trip failed");
+}
+
+var rejected = false;
+try
+{
+    WireStockSource.FromJson("{\"Type\":\"Unknown\"}");
+}
+catch (ArgumentOutOfRangeException)
+{
+    rejected = true;
+}
+
+if (!rejected)
+{
+    throw new InvalidOperationException("C# union accepted an unknown discriminator");
+}
+''');
+
+  final result = Process.runSync('dotnet', ['run', '--project', project.path]);
+  expect(result.exitCode, 0, reason: '${result.stdout}\n${result.stderr}');
 }
 
 ResolvedSchema _resolvedSample() {
@@ -882,4 +1052,34 @@ mappings:
       statusCode: { from: status }
       createdAt: { from: createdAt }
       SomeField: { const: null }
+''';
+
+const _unionYaml = r'''
+models:
+  StockSource:
+    union:
+      variants:
+        BarsetsSource:
+          value: Barsets
+          fields:
+            BarsetIds: List<int>
+        PackingPlanSource:
+          value: PackingPlan
+
+  WireStockSource:
+    json: true
+    union:
+      discriminator: Type
+      variants:
+        WireBarsetsSource:
+          value: Barsets
+          fields:
+            BarsetIds: List<int>
+        WirePackingPlanSource:
+          value: PackingPlan
+
+  WireEnvelope:
+    json: true
+    fields:
+      StockSource: WireStockSource
 ''';

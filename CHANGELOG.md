@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.0
+
+- Added closed tagged unions with Dart sealed variants and C# abstract/sealed variants.
+- Added discriminator-based JSON serialization that rejects unknown union tags.
+
 ## 0.2.2
 
 - Allowed explicitly named converters to map nullable source fields to non-nullable targets when the converter

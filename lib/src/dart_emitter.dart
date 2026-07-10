@@ -49,6 +49,9 @@ class _DartEmitter {
     for (final enumDef in resolved.enumModels) {
       _writeEnum(body, enumDef);
     }
+    for (final union in resolved.unionModels) {
+      _writeUnion(body, union);
+    }
     for (final model in resolved.dataModels) {
       _writeDataModel(body, model);
     }
@@ -154,6 +157,93 @@ class _DartEmitter {
       buffer.writeln('}');
       buffer.writeln();
     }
+  }
+
+  void _writeUnion(StringBuffer buffer, UnionModelDef model) {
+    final typeName = dartTypeName(model.name);
+    _writeDoc(buffer, model.doc);
+    buffer.writeln('sealed class $typeName {');
+    buffer.writeln('  const $typeName();');
+    if (model.json) {
+      buffer.writeln();
+      buffer.writeln(
+        '  factory $typeName.fromJson(Map<String, dynamic> json) {',
+      );
+      buffer.writeln(
+        '    final discriminator = json[${dartStringLiteral(model.discriminator)}];',
+      );
+      buffer.writeln('    switch (discriminator) {');
+      for (final variant in model.variants.values) {
+        buffer.writeln('      case ${dartStringLiteral(variant.value)}:');
+        buffer.writeln('        return ${dartTypeName(variant.name)}(');
+        for (final field in variant.fields.values) {
+          final jsonAccess = "json[${dartStringLiteral(field.name)}]";
+          buffer.writeln(
+            '          ${dartFieldName(field.name)}: ${_fromJsonExpression(field.type, jsonAccess)},',
+          );
+        }
+        buffer.writeln('        );');
+      }
+      buffer.writeln('      default:');
+      buffer.writeln(
+        "        throw ArgumentError.value(discriminator, ${dartStringLiteral(model.discriminator)}, ${dartStringLiteral('Unknown $typeName discriminator')});",
+      );
+      buffer.writeln('    }');
+      buffer.writeln('  }');
+      buffer.writeln();
+      buffer.writeln('  Map<String, dynamic> toJson();');
+    }
+    buffer.writeln('}');
+    buffer.writeln();
+
+    for (final variant in model.variants.values) {
+      _writeUnionVariant(buffer, model, variant);
+    }
+  }
+
+  void _writeUnionVariant(
+    StringBuffer buffer,
+    UnionModelDef model,
+    UnionVariantDef variant,
+  ) {
+    final typeName = dartTypeName(variant.name);
+    buffer.writeln(
+      'final class $typeName extends ${dartTypeName(model.name)} {',
+    );
+    if (variant.fields.isEmpty) {
+      buffer.writeln('  const $typeName();');
+    } else {
+      buffer.writeln('  const $typeName({');
+      for (final field in variant.fields.values) {
+        buffer.writeln('    required this.${dartFieldName(field.name)},');
+      }
+      buffer.writeln('  });');
+    }
+
+    for (final field in variant.fields.values) {
+      buffer.writeln();
+      _writeDoc(buffer, field.doc, indent: '  ');
+      buffer.writeln(
+        '  final ${_dartType(field.type)} ${dartFieldName(field.name)};',
+      );
+    }
+
+    if (model.json) {
+      buffer.writeln();
+      buffer.writeln('  @override');
+      buffer.writeln('  Map<String, dynamic> toJson() => <String, dynamic>{');
+      buffer.writeln(
+        '    ${dartStringLiteral(model.discriminator)}: ${dartStringLiteral(variant.value)},',
+      );
+      for (final field in variant.fields.values) {
+        buffer.writeln(
+          '    ${dartStringLiteral(field.name)}: ${_toJsonExpression(field.type, dartFieldName(field.name))},',
+        );
+      }
+      buffer.writeln('  };');
+    }
+    buffer.writeln('}');
+    buffer.writeln();
   }
 
   void _writeDataModel(StringBuffer buffer, DataModelDef model) {
@@ -316,6 +406,9 @@ class _DartEmitter {
     if (resolved.isDataModel(type.name)) {
       return '$expression.toJson()';
     }
+    if (resolved.isUnion(type.name)) {
+      return '$expression.toJson()';
+    }
     if (resolved.isEnum(type.name)) {
       return resolved.enumUsesStringJson(resolved.enumModel(type.name))
           ? '${_enumToStringName(type.name)}($expression)'
@@ -335,6 +428,9 @@ class _DartEmitter {
       return '($expression as List<dynamic>).map((item) => ${_fromJsonExpression(type.item!, 'item')}).toList()';
     }
     if (resolved.isDataModel(type.name)) {
+      return '${dartTypeName(type.name)}.fromJson($expression as Map<String, dynamic>)';
+    }
+    if (resolved.isUnion(type.name)) {
       return '${dartTypeName(type.name)}.fromJson($expression as Map<String, dynamic>)';
     }
     if (resolved.isEnum(type.name)) {
